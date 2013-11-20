@@ -9,14 +9,13 @@ var Commander = require("substance-commander");
 // ==========================================================================
 
 var Surface = function(doc, options) {
+  View.call(this);
+
+  var that = this;
 
   options = _.extend({
     editable: true
   }, options);
-
-  View.call(this);
-  var that = this;
-
   this.options = options;
 
   if (this.options.renderer) {
@@ -25,7 +24,6 @@ var Surface = function(doc, options) {
     this.renderer = new doc.__document.constructor.Renderer(doc);
   }
 
-  // Incoming events
   this.doc = doc;
 
   // Pull out the registered nodetypes on the written article
@@ -192,6 +190,7 @@ Surface.Prototype = function() {
     // HACK: sometimes it happens that the selection anchor node is undefined.
     // Try to understand and fix someday.
     if (wSel.anchorNode === null) {
+      console.error("Ooops. Please try to fix this.");
       return;
     }
 
