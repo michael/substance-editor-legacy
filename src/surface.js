@@ -8,7 +8,7 @@ var Commander = require("substance-commander");
 // Substance.Surface
 // ==========================================================================
 
-var Surface = function(doc, options) {
+var Surface = function(docCtrl, options) {
   View.call(this);
 
   var that = this;
@@ -21,17 +21,17 @@ var Surface = function(doc, options) {
   if (this.options.renderer) {
     this.renderer = this.options.renderer;
   } else {
-    this.renderer = new doc.__document.constructor.Renderer(doc);
+    this.renderer = new docCtrl.__document.constructor.Renderer(doc);
   }
 
-  this.doc = doc;
+  this.docCtrl = docCtrl;
 
   // Pull out the registered nodetypes on the written article
-  this.nodeTypes = doc.__document.nodeTypes;
+  this.nodeTypes = docCtrl.__document.nodeTypes;
 
-  this.listenTo(this.doc.selection,  "selection:changed", this.renderSelection);
-  this.listenTo(this.doc.__document, "property:updated", this.onUpdateView);
-  this.listenTo(this.doc.__document, "graph:reset", this.reset);
+  this.listenTo(this.docCtrl.selection,  "selection:changed", this.renderSelection);
+  this.listenTo(this.docCtrl.__document, "property:updated", this.onUpdateView);
+  this.listenTo(this.docCtrl.__document, "graph:reset", this.reset);
 
   // Start building the initial stuff
   this.build();
@@ -39,7 +39,7 @@ var Surface = function(doc, options) {
   this.$el.addClass('surface');
 
   // Shouldn't this be done outside?
-  this.$el.addClass(this.doc.view);
+  this.$el.addClass(this.docCtrl.view);
 
   // The editable surface responds to selection changes
 
@@ -56,7 +56,7 @@ var Surface = function(doc, options) {
     this.$el.delegate('img', 'click', function(e) {
       var $el = $(e.currentTarget).parent().parent().parent();
       var nodeId = $el.attr('id');
-      that.doc.selection.selectNode(nodeId);
+      that.docCtrl.selection.selectNode(nodeId);
       return false;
     });
 
@@ -73,7 +73,7 @@ var Surface = function(doc, options) {
         var dirt = this._dirt.shift();
         dirt[0].textContent = dirt[1];
       }
-      this.doc.write(e.data);
+      this.docCtrl.write(e.data);
       e.preventDefault();
     }.bind(this);
 
@@ -105,35 +105,35 @@ var Surface = function(doc, options) {
     }, "keydown");
 
     this.keyboard.bind(["backspace"], _manipulate(function() {
-      that.doc.delete("left");
+      that.docCtrl.delete("left");
     }), "keydown");
 
     this.keyboard.bind(["del"], _manipulate(function() {
-      that.doc.delete("right");
+      that.docCtrl.delete("right");
     }), "keydown");
 
     this.keyboard.bind(["enter"], _manipulate(function() {
-      that.doc.modifyNode();
+      that.docCtrl.modifyNode();
     }), "keydown");
 
     this.keyboard.bind(["shift+enter"], _manipulate(function() {
-      that.doc.write("\n");
+      that.docCtrl.write("\n");
     }), "keydown");
 
     this.keyboard.bind(["space"], _manipulate(function() {
-      that.doc.write(" ");
+      that.docCtrl.write(" ");
     }), "keydown");
 
     this.keyboard.bind(["tab"], _manipulate(function() {
-      that.doc.write("  ");
+      that.docCtrl.write("  ");
     }), "keydown");
 
     this.keyboard.bind(["ctrl+z"], _manipulate(function() {
-      that.doc.undo();
+      that.docCtrl.undo();
     }), "keydown");
 
     this.keyboard.bind(["ctrl+shift+z"], _manipulate(function() {
-      that.doc.redo();
+      that.docCtrl.redo();
     }), "keydown");
 
     this.makeEditable(this.el);
@@ -196,7 +196,7 @@ Surface.Prototype = function() {
 
     // Set selection to the cursor if clicked on the cursor.
     if ($(wSel.anchorNode.parentElement).is(".cursor")) {
-      this.doc.selection.collapse("cursor");
+      this.docCtrl.selection.collapse("cursor");
       return;
     }
 
@@ -228,18 +228,18 @@ Surface.Prototype = function() {
     var endNode = _findNodeElement.call(this, wEndPos[0]);
 
     var startNodeId = startNode.getAttribute("id");
-    var startNodePos = this.doc.getPosition(startNodeId) ;
+    var startNodePos = this.docCtrl.getPosition(startNodeId) ;
     var startCharPos = this.nodes[startNodeId].getCharPosition(wStartPos[0], wStartPos[1]);
 
     var endNodeId = endNode.getAttribute("id");
-    var endNodePos = this.doc.getPosition(endNodeId);
+    var endNodePos = this.docCtrl.getPosition(endNodeId);
     var endCharPos = this.nodes[endNodeId].getCharPosition(wEndPos[0], wEndPos[1]);
 
     // the selection range in Document.Selection coordinates
     var startPos = [startNodePos, startCharPos];
     var endPos = [endNodePos, endCharPos];
 
-    this.doc.selection.set({start: startPos, end: endPos});
+    this.docCtrl.selection.set({start: startPos, end: endPos});
   };
 
 
@@ -254,7 +254,7 @@ Surface.Prototype = function() {
       return;
     }
 
-    if (this.doc.selection.isNull()) {
+    if (this.docCtrl.selection.isNull()) {
       this.$cursor.hide();
       return;
     }
@@ -262,12 +262,12 @@ Surface.Prototype = function() {
     // Hide native selection in favor of our custom one
     var wSel = window.getSelection();
 
-    var range = this.doc.selection.range();
-    var startNode = this.doc.getNodeFromPosition(range.start[0]);
+    var range = this.docCtrl.selection.range();
+    var startNode = this.docCtrl.getNodeFromPosition(range.start[0]);
     var startNodeView = this.renderer.nodes[startNode.id];
     var wStartPos = startNodeView.getDOMPosition(range.start[1]);
 
-    var endNode = this.doc.getNodeFromPosition(range.end[0]);
+    var endNode = this.docCtrl.getNodeFromPosition(range.end[0]);
     var endNodeView = this.renderer.nodes[endNode.id];
     var wEndPos = endNodeView.getDOMPosition(range.end[1]);
 
@@ -284,11 +284,6 @@ Surface.Prototype = function() {
   //
 
   this.build = function() {
-    // var Renderer = this.options.renderer || this.doc.__document.constructor.Renderer;
-    // var renderer = this.options.renderer:
-    // Create a Renderer instance, which implicitly constructs all content node views.
-    // this.renderer = new Renderer(this.doc);
-
     // Add some backward compatibility
     this.nodes = this.renderer.nodes;
   };
@@ -324,8 +319,6 @@ Surface.Prototype = function() {
     this.el.appendChild(controls);
     this.el.appendChild(nodes);
     this.el.appendChild(cursor);
-
-    // console.log("Surface.render()", "this.doc.getNodes()", nodes);
 
     // Actual content goes here
     // --------
@@ -364,6 +357,12 @@ Surface.Prototype = function() {
     }, this);
   };
 
+  // HACK: used by outline
+  // TODO: meditate on the Surface's API
+  this.getContainer = function() {
+    return this.docCtrl.container;
+  };
+
   // TODO: we could factor this out into something like a ContainerView?
 
   function insertOrAppend(container, pos, el) {
@@ -377,7 +376,7 @@ Surface.Prototype = function() {
   }
 
   this.onUpdateView = function(path, diff) {
-    if (path.length !== 2 || path[0] !== "content" || path[1] !== "nodes") return;
+    if (path.length !== 2 || path[0] !== this.docCtrl.view || path[1] !== "nodes") return;
 
     var nodeId, node;
     var container = this._nodesEl;
@@ -387,7 +386,7 @@ Surface.Prototype = function() {
     if (diff.isInsert()) {
       // Create a view and insert render it into the nodes container element.
       nodeId = diff.val;
-      node = this.doc.get(nodeId);
+      node = this.docCtrl.get(nodeId);
       // TODO: this will hopefully be solved in a clean way
       // when we have done the 'renderer' refactorings
       if (this.nodeTypes[node.type]) {
