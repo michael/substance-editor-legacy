@@ -3,7 +3,6 @@
 var _ = require("underscore");
 var View = require("substance-application").View;
 var util = require("substance-util");
-var Commander = require("substance-commander");
 
 // Substance.Surface
 // ==========================================================================
@@ -28,116 +27,15 @@ var Surface = function(docCtrl, options) {
 
   // Pull out the registered nodetypes on the written article
   this.nodeTypes = docCtrl.__document.nodeTypes;
-
-  this.listenTo(this.docCtrl.selection,  "selection:changed", this.renderSelection);
-  this.listenTo(this.docCtrl.__document, "property:updated", this.onUpdateView);
-  this.listenTo(this.docCtrl.__document, "graph:reset", this.reset);
-
-  // Start building the initial stuff
-  this.build();
+  this.nodes = this.renderer.nodes;
 
   this.$el.addClass('surface');
 
   // Shouldn't this be done outside?
   this.$el.addClass(this.docCtrl.view);
 
-  // The editable surface responds to selection changes
-
-  if (options.editable) {
-
-    this.el.setAttribute("contenteditable", "true");
-    this.el.spellcheck = false;
-
-    this.$el.mouseup(function(e) {
-      this.ignoreNextSelection = true;
-      this.updateSelection(e);
-    }.bind(this));
-
-    this.$el.delegate('img', 'click', function(e) {
-      var $el = $(e.currentTarget).parent().parent().parent();
-      var nodeId = $el.attr('id');
-      that.docCtrl.selection.selectNode(nodeId);
-      return false;
-    });
-
-    this._dirt = [];
-
-    this._onKeyDown = function() {
-      this._dirtPossible = true;
-    }.bind(this);
-
-    this._onTextInput = function(e) {
-      //console.log("textinput", e);
-      this._dirtPossible = false;
-      while (this._dirt.length > 0) {
-        var dirt = this._dirt.shift();
-        dirt[0].textContent = dirt[1];
-      }
-      this.docCtrl.write(e.data);
-      e.preventDefault();
-    }.bind(this);
-
-    var _manipulate = function(f, dontPrevent) {
-      return function(e) {
-        that._dirtPossible = false;
-        setTimeout(f, 0);
-        if (dontPrevent !== true) {
-          e.preventDefault();
-        }
-      };
-    };
-
-    // TODO: many combinations which would probably be easy to handle
-    // using the native event...
-    this.keyboard = new Commander.Mousetrap();
-    this.keyboard.bind([
-        "up", "down", "left", "right",
-        "shift+up", "shift+down", "shift+left", "shift+right",
-        "ctrl+up", "ctrl+down", "ctrl+left", "ctrl+right",
-        "ctrl+shift+up", "ctrl+shift+down", "ctrl+shift+left", "ctrl+shift+right",
-        "alt+up", "alt+down", "alt+left", "alt+right"
-      ], function() {
-      // call this after the movement has been done by the contenteditable
-      setTimeout(function() {
-        that.ignoreNextSelection = true;
-        that.updateSelection();
-      }, 0);
-    }, "keydown");
-
-    this.keyboard.bind(["backspace"], _manipulate(function() {
-      that.docCtrl.delete("left");
-    }), "keydown");
-
-    this.keyboard.bind(["del"], _manipulate(function() {
-      that.docCtrl.delete("right");
-    }), "keydown");
-
-    this.keyboard.bind(["enter"], _manipulate(function() {
-      that.docCtrl.modifyNode();
-    }), "keydown");
-
-    this.keyboard.bind(["shift+enter"], _manipulate(function() {
-      that.docCtrl.write("\n");
-    }), "keydown");
-
-    this.keyboard.bind(["space"], _manipulate(function() {
-      that.docCtrl.write(" ");
-    }), "keydown");
-
-    this.keyboard.bind(["tab"], _manipulate(function() {
-      that.docCtrl.write("  ");
-    }), "keydown");
-
-    this.keyboard.bind(["ctrl+z"], _manipulate(function() {
-      that.docCtrl.undo();
-    }), "keydown");
-
-    this.keyboard.bind(["ctrl+shift+z"], _manipulate(function() {
-      that.docCtrl.redo();
-    }), "keydown");
-
-    this.makeEditable(this.el);
-  }
+  this.listenTo(this.docCtrl.__document, "property:updated", this.onUpdateView);
+  this.listenTo(this.docCtrl.__document, "graph:reset", this.reset);
 };
 
 
@@ -154,30 +52,6 @@ Surface.Prototype = function() {
       current = current.parentElement;
     }
     return null;
-  };
-
-  this.makeEditable = function(el) {
-    var that = this;
-
-    el.addEventListener("keydown", this._onKeyDown);
-
-    // TODO: cleanup... Firefix needs a different event...
-    el.addEventListener("textInput", this._onTextInput, true);
-    el.addEventListener("input", this._onTextInput, true);
-
-    this._dirt = [];
-    this._observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (that._dirtPossible) {
-          that._dirt.push([mutation.target, mutation.oldValue]);
-        }
-      });
-    });
-    // configuration of the observer:
-    var config = { subtree: true, characterData: true, characterDataOldValue: true };
-    this._observer.observe(el, config);
-
-    this.keyboard.connect(el);
   };
 
   // Read out current DOM selection and update selection in the model
@@ -249,11 +123,6 @@ Surface.Prototype = function() {
 
   this.renderSelection = function() {
 
-    if (this.ignoreNextSelection === true) {
-      this.ignoreNextSelection = false;
-      return;
-    }
-
     if (this.docCtrl.selection.isNull()) {
       this.$cursor.hide();
       return;
@@ -277,15 +146,6 @@ Surface.Prototype = function() {
     wSel.removeAllRanges();
     wSel.addRange(wRange);
 
-  };
-
-  // Setup
-  // --------
-  //
-
-  this.build = function() {
-    // Add some backward compatibility
-    this.nodes = this.renderer.nodes;
   };
 
   // Render it
@@ -342,7 +202,6 @@ Surface.Prototype = function() {
     _.each(this.nodes, function(nodeView) {
       nodeView.dispose();
     });
-    this.build();
     this.render();
   };
 
@@ -416,6 +275,7 @@ Surface.Prototype = function() {
       throw new Error("Illegal state.");
     }
   };
+
 };
 
 _.extend(Surface.Prototype, util.Events.Listener);
