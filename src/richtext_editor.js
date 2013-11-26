@@ -20,7 +20,7 @@ var RichTextEditor = function(document, editorFactory, options) {
 
 RichTextEditor.Prototype = function() {
 
-  var __super__ = DocumentController.prototype;
+  // var __super__ = DocumentController.prototype;
 
   // Delete current selection
   // --------
@@ -89,7 +89,7 @@ RichTextEditor.Prototype = function() {
 
     // Get the editor and ask for permission to break the node at the given position
     var editor = this.getEditor(node);
-    if (!editor.canBreak(node, charPos)) {
+    if (!editor.canBreak(session, node, charPos)) {
       console.log("Can not break at the given position.");
       return;
     }
@@ -104,12 +104,11 @@ RichTextEditor.Prototype = function() {
     }
 
     // Let the editor apply operations to break the node
-    if (editor.breakNode(session, node, nodePos, charPos)) {
-      session.save();
-      // update the cursor
-      var newCursorPos = [nodePos+1, 0];
-      this.selection.set(newCursorPos);
-    }
+    editor.breakNode(session, node, nodePos, charPos);
+    session.save();
+    // update the cursor
+    var newCursorPos = [nodePos+1, 0];
+    this.selection.set(newCursorPos);
   };
 
   // Create an annotation of given type for the current selection
@@ -139,7 +138,6 @@ RichTextEditor.Prototype = function() {
     }
 
     var session = this.startManipulation();
-    var doc = session.doc;
     var sel = session.sel;
 
     var node = sel.getNodes()[0];
@@ -149,7 +147,7 @@ RichTextEditor.Prototype = function() {
 
     // Get the editor and ask for permission to insert text at the given position
     var editor = this.getEditor(node);
-    if (!editor.canInsert(node, charPos)) {
+    if (!editor.canInsert(session, node, charPos)) {
       console.log("Can not insert at the given position.");
       return;
     }
@@ -164,15 +162,8 @@ RichTextEditor.Prototype = function() {
     }
 
     // Ask for an operation and abort if no operation is given.
-    var op = editor.insertOperation(node, charPos, text);
-    if (!op) {
-      return;
-    }
-
-    // Apply the operation and save the session
-    doc.apply(op);
+    editor.insertContent(session, node, charPos, text);
     session.save();
-
     // update the cursor
     this.selection.set([nodePos, charPos + text.length]);
   };
@@ -195,13 +186,12 @@ RichTextEditor.Prototype = function() {
     var node = sel.getNodes()[0];
 
     var editor = this.getEditor(node);
-    if (!editor.canChangeType(node, newType)) {
+    if (!editor.canChangeType(session, node, newType)) {
       return;
     }
 
-    if(editor.changeType(session, node, nodePos, newType, data)) {
-      session.save();
-    }
+    editor.changeType(session, node, nodePos, newType, data);
+    session.save();
   };
 
   this.__deleteSelection = function(session) {
@@ -212,8 +202,7 @@ RichTextEditor.Prototype = function() {
     if (nodes.length === 1) {
       success = this.__deleteSingle(session, nodes[0]);
     } else {
-      console.error("Sorry, deletion for multi-node selections is not yet implemented.");
-      return false;
+      success = this.__deleteMulti(session);
     }
 
     // in any case after deleting the cursor shall be
@@ -225,32 +214,95 @@ RichTextEditor.Prototype = function() {
 
   this.__deleteSingle = function(session, node) {
     var sel = session.sel;
-    var doc = session.doc;
     var startChar = sel.startChar();
     var endChar = sel.endChar();
     var editor = this.getEditor(node);
 
     // Check if the editor allows to delete
-    if (!editor.canDelete(node, startChar, endChar)) {
+    if (!editor.canDelete(session, node, startChar, endChar)) {
       console.log("Can not delete node", node.type, startChar, endChar);
       return false;
     }
 
-    var op = editor.deleteOperation(node, startChar, endChar);
-    if (!op) {
+    editor.deleteContent(session, node, startChar, endChar);
+    return true;
+  };
+
+  this.__deleteMulti = function(session) {
+    var ranges = session.sel.getRanges();
+    var editors = [];
+
+    var i, r;
+
+    // Pre-check: can all deletions be applied?
+    // -> partial deletions for first and last
+    // -> full node deletion for inner nodes
+    var canDelete = true;
+    for (i = 0; i < ranges.length; i++) {
+      r = ranges[i];
+
+      if (i === 0 || i === ranges.length-1) {
+        editors[i] = this.getEditor(r.node);
+        canDelete &= editors[i].canDelete(session, r.node, r.start, r.end);
+      } else {
+        // TODO: who is to decide if a top-level node can be deleted
+        // this should be the ViewEditor
+        editors[i] = this.getEditor({type: "view", id: this.view});
+        canDelete = editors[i].canDelete(session, r.node, r.nodePos);
+      }
+
+      if (!canDelete) {
+        console.log("Can't delete node:", r.node, r.nodePos);
+        return false;
+      }
+    }
+
+    // Perform the deletions
+    for (i = 0; i < ranges.length; i++) {
+      r = ranges[i];
+      if (i === 0 || i === ranges.length-1) {
+        editors[i].deleteContent(session, r.node, r.start, r.end);
+      } else {
+        editors[i].deleteNode(session, r.node, r.nodePos);
+        session.doc.delete(r.node.id);
+      }
+    }
+
+    // TODO: Join the first with the last
+    this.__join(session, ranges[0], ranges[ranges.length-1]);
+
+    return true;
+  };
+
+  this.__join = function(session, r1, r2) {
+
+    var first = r1.node;
+    var second = r2.node;
+    var nodePos = r1.nodePos + 1;
+
+    var nodeEditor = this.getEditor(first);
+    var viewEditor = this.getEditor({type: "view", id: this.view});
+
+    if (!nodeEditor.canJoin(session, first, second)) {
       return false;
     }
 
-    doc.apply(op);
+    if (!viewEditor.canDelete(session, second, nodePos)) {
+      return false;
+    }
+
+    nodeEditor.join(session, first, second);
+    viewEditor.deleteNode(session, second, nodePos);
+    session.doc.delete(second.id);
 
     return true;
   };
 
   this.getEditor = function(node) {
     if (!this.editors[node.type]) {
-      this.editors[node.type] = this.editorFactory.createEditor(node.type);
+      this.editors[node.id] = this.editorFactory.createEditor(node);
     }
-    return this.editors[node.type];
+    return this.editors[node.id];
   };
 
 };
