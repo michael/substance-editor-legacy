@@ -196,7 +196,6 @@ RichTextEditor.Prototype = function() {
 
     var editor = this.getEditor(node);
     if (!editor.canChangeType(node, newType)) {
-      console.error("Can not switch type.");
       return;
     }
 
