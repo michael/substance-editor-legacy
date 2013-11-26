@@ -316,6 +316,14 @@ RichTextEditor.Keyboard = function(docCtrl) {
       docCtrl.redo();
     }), "keydown");
 
+    keyboard.bind(["ctrl+c"], surface.manipulate(function() {
+      docCtrl.copy();
+    }), "keydown");
+
+    keyboard.bind(["ctrl+v"], surface.manipulate(function() {
+      docCtrl.paste();
+    }), "keydown");
+
     // EXPERIMENTAL hooks for creating new node and annotation types
 
     keyboard.bind(["ctrl+shift+c"], surface.manipulate(function() {
