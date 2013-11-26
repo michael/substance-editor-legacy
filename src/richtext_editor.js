@@ -367,6 +367,14 @@ RichTextEditor.Keyboard = function(docCtrl) {
       docCtrl.redo();
     }), "keydown");
 
+    keyboard.bind(["ctrl+b"], surface.manipulate(function() {
+      docCtrl.annotate("strong");
+    }), "keydown");
+
+    keyboard.bind(["ctrl+i"], surface.manipulate(function() {
+      docCtrl.annotate("emphasis");
+    }), "keydown");
+
     keyboard.bind(["ctrl+c"], surface.manipulate(function() {
       docCtrl.copy();
     }), "keydown");
