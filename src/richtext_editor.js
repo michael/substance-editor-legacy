@@ -31,6 +31,8 @@ RichTextEditor.Prototype = function() {
     // var doc = session.doc;
     var sel = session.sel;
 
+    console.log(sel);
+
     if (sel.isNull()) return;
 
     if (sel.isCollapsed()) {
@@ -116,7 +118,7 @@ RichTextEditor.Prototype = function() {
 
   this.annotate = function(type) {
     var session = this.startManipulation();
-    var newCursorPos = session.sel.range().start;
+    // var newCursorPos = session.sel.range().start;
     session.annotator.annotate(session.sel, type);
     session.save();
     // Note: it feels better when the selection is collapsed after setting the
@@ -175,6 +177,34 @@ RichTextEditor.Prototype = function() {
     this.selection.set([nodePos, charPos + text.length]);
   };
 
+  this.changeType = function(newType, data) {
+    console.log("RichTextEditor.changeType()", newType, data);
+
+    if (this.selection.isNull()) {
+      console.error("Nothing selected.");
+      return;
+    }
+    if (this.selection.hasMultipleNodes()) {
+      console.error("Can not switch type of multiple nodes.");
+      return;
+    }
+
+    var session = this.startManipulation();
+    var sel = session.sel;
+    var nodePos = session.sel.start[0];
+    var node = sel.getNodes()[0];
+
+    var editor = this.getEditor(node);
+    if (!editor.canChangeType(node, newType)) {
+      console.error("Can not switch type.");
+      return;
+    }
+
+    if(editor.changeType(session, node, nodePos, newType, data)) {
+      session.save();
+    }
+  };
+
   this.__deleteSelection = function(session) {
     var sel = session.sel;
     var nodes = sel.getNodes();
@@ -203,6 +233,7 @@ RichTextEditor.Prototype = function() {
 
     // Check if the editor allows to delete
     if (!editor.canDelete(node, startChar, endChar)) {
+      console.log("Can not delete node", node.type, startChar, endChar);
       return false;
     }
 
@@ -295,8 +326,20 @@ RichTextEditor.Keyboard = function(docCtrl) {
       docCtrl.annotate("math");
     }), "keydown");
 
-    keyboard.bind(["ctrl+shift+h"], surface.manipulate(function() {
-      docCtrl.annotate("math");
+    keyboard.bind(["alt+shift+t"], surface.manipulate(function() {
+      docCtrl.changeType("text");
+    }), "keydown");
+
+    keyboard.bind(["alt+shift+h 1"], surface.manipulate(function() {
+      docCtrl.changeType("heading", {"level": 1});
+    }), "keydown");
+
+    keyboard.bind(["alt+shift+h 2"], surface.manipulate(function() {
+      docCtrl.changeType("heading", {"level": 2});
+    }), "keydown");
+
+    keyboard.bind(["alt+shift+h 3"], surface.manipulate(function() {
+      docCtrl.changeType("heading", {"level": 3});
     }), "keydown");
 
     keyboard.connect(surface.el);

@@ -10,8 +10,6 @@ var util = require("substance-util");
 var Surface = function(docCtrl, options) {
   View.call(this);
 
-  var that = this;
-
   options = _.extend({
     editable: true
   }, options);
@@ -20,7 +18,7 @@ var Surface = function(docCtrl, options) {
   if (this.options.renderer) {
     this.renderer = this.options.renderer;
   } else {
-    this.renderer = new docCtrl.__document.constructor.Renderer(doc);
+    this.renderer = new docCtrl.__document.constructor.Renderer(docCtrl);
   }
 
   this.docCtrl = docCtrl;
