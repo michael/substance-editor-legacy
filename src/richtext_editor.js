@@ -115,10 +115,10 @@ RichTextEditor.Prototype = function() {
   // --------
   //
 
-  this.annotate = function(type) {
+  this.annotate = function(type, data) {
     var session = this.startManipulation();
     // var newCursorPos = session.sel.range().start;
-    session.annotator.annotate(session.sel, type);
+    session.annotator.annotate(session.sel, type, data);
     session.save();
     // Note: it feels better when the selection is collapsed after setting the
     // annotation style
