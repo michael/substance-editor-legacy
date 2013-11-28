@@ -166,6 +166,38 @@ RichTextEditor.Prototype = function() {
     session.save();
     // update the cursor
     this.selection.set([nodePos, charPos + text.length]);
+
+  // Behaviors triggered by using `tab` and `shift+tab`.
+  // --------
+  //
+  // Headings and List items change the level. Text nodes insert a certain amount of spaces.
+  //
+  // Arguments:
+  ///  - `direction`: `right` or `left` (default: `right`)
+  this.indent = function(direction) {
+    if (this.selection.isNull()) {
+      console.error("Nothing is selected.");
+      return;
+    }
+
+    if (this.selection.hasMultipleNodes()) {
+      console.error("Indenting Multi-Node selection is not supported yet.");
+      return;
+    }
+
+    var session = this.startManipulation();
+    var sel = session.sel;
+    var node = sel.getNodes()[0];
+
+    var editor = this.getEditor(node);
+    if (!editor.canIndent(session, node, direction)) {
+      console.log("Can not indent at the given position.");
+      return;
+    }
+
+    editor.indent(session, node, direction);
+    session.save();
+  };
   };
 
   this.changeType = function(newType, data) {
@@ -357,7 +389,11 @@ RichTextEditor.Keyboard = function(docCtrl) {
     }), "keydown");
 
     keyboard.bind(["tab"], surface.manipulate(function() {
-      docCtrl.write("  ");
+      docCtrl.indent("right");
+    }), "keydown");
+
+    keyboard.bind(["shift+tab"], surface.manipulate(function() {
+      docCtrl.indent("left");
     }), "keydown");
 
     keyboard.bind(["ctrl+z"], surface.manipulate(function() {
