@@ -138,6 +138,14 @@ RichTextEditor.Prototype = function() {
     }
 
     var session = this.startManipulation();
+
+    if (this.__write(session, text)) {
+      session.save();
+      this.selection.set(session.sel);
+    }
+  };
+
+  this.__write = function(session, text) {
     var sel = session.sel;
 
     var node = sel.getNodes()[0];
@@ -149,7 +157,7 @@ RichTextEditor.Prototype = function() {
     var editor = this.getEditor(node);
     if (!editor.canInsert(session, node, charPos)) {
       console.log("Can not insert at the given position.");
-      return;
+      return false;
     }
 
     // if the selection is expanded then delete first
@@ -157,15 +165,18 @@ RichTextEditor.Prototype = function() {
     if (!sel.isCollapsed()) {
       if (!this.__deleteSelection(session)) {
         console.log("Could not delete the selected content");
-        return;
+        return false;
       }
     }
 
     // Ask for an operation and abort if no operation is given.
     editor.insertContent(session, node, charPos, text);
-    session.save();
+
     // update the cursor
-    this.selection.set([nodePos, charPos + text.length]);
+    sel.set([nodePos, charPos + text.length]);
+
+    return true;
+  };
 
   // Behaviors triggered by using `tab` and `shift+tab`.
   // --------
@@ -198,6 +209,34 @@ RichTextEditor.Prototype = function() {
     editor.indent(session, node, direction);
     session.save();
   };
+
+  this.addReference = function(label, type, data) {
+
+    if (this.selection.isNull()) {
+      console.error("Nothing is selected.");
+      return;
+    }
+
+    var session = this.startManipulation();
+
+    if (this.__write(session, label)) {
+      var sel = session.sel;
+      var cursor = sel.getCursor();
+
+      sel.set({
+        start: [cursor.nodePos, cursor.charPos-label.length],
+        end: [cursor.nodePos, cursor.charPos]
+      });
+
+      session.annotator.annotate(sel, type, data);
+      // Note: it feels better when the selection is collapsed after setting the
+      // annotation style
+      sel.collapse("right");
+
+      session.save();
+      this.selection.set(session.sel);
+    }
+
   };
 
   this.changeType = function(newType, data) {
