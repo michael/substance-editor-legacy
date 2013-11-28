@@ -324,7 +324,8 @@ RichTextEditor.Keyboard = function(docCtrl) {
         "shift+up", "shift+down", "shift+left", "shift+right",
         "ctrl+up", "ctrl+down", "ctrl+left", "ctrl+right",
         "ctrl+shift+up", "ctrl+shift+down", "ctrl+shift+left", "ctrl+shift+right",
-        "alt+up", "alt+down", "alt+left", "alt+right"
+        "alt+up", "alt+down", "alt+left", "alt+right",
+        "alt+shift+up", "alt+shift+down", "alt+shift+left", "alt+shift+right",
     ], function() {
       surface.onCursorMoved();
     }, "keydown");
@@ -393,19 +394,19 @@ RichTextEditor.Keyboard = function(docCtrl) {
       docCtrl.annotate("math");
     }), "keydown");
 
-    keyboard.bind(["alt+shift+t"], surface.manipulate(function() {
+    keyboard.bind(["ctrl+shift+t"], surface.manipulate(function() {
       docCtrl.changeType("text");
     }), "keydown");
 
-    keyboard.bind(["alt+shift+h 1"], surface.manipulate(function() {
+    keyboard.bind(["ctrl+shift+h 1"], surface.manipulate(function() {
       docCtrl.changeType("heading", {"level": 1});
     }), "keydown");
 
-    keyboard.bind(["alt+shift+h 2"], surface.manipulate(function() {
+    keyboard.bind(["ctrl+shift+h 2"], surface.manipulate(function() {
       docCtrl.changeType("heading", {"level": 2});
     }), "keydown");
 
-    keyboard.bind(["alt+shift+h 3"], surface.manipulate(function() {
+    keyboard.bind(["ctrl+shift+h 3"], surface.manipulate(function() {
       docCtrl.changeType("heading", {"level": 3});
     }), "keydown");
 
