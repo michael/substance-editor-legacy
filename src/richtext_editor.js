@@ -469,20 +469,12 @@ RichTextEditor.Keyboard = function(docCtrl) {
       docCtrl.annotate("math");
     }), "keydown");
 
-    keyboard.bind(["ctrl+shift+t"], surface.manipulate(function() {
+    keyboard.bind(["ctrl+t"], surface.manipulate(function() {
       docCtrl.changeType("text");
     }), "keydown");
 
-    keyboard.bind(["ctrl+shift+h 1"], surface.manipulate(function() {
+    keyboard.bind(["ctrl+h"], surface.manipulate(function() {
       docCtrl.changeType("heading", {"level": 1});
-    }), "keydown");
-
-    keyboard.bind(["ctrl+shift+h 2"], surface.manipulate(function() {
-      docCtrl.changeType("heading", {"level": 2});
-    }), "keydown");
-
-    keyboard.bind(["ctrl+shift+h 3"], surface.manipulate(function() {
-      docCtrl.changeType("heading", {"level": 3});
     }), "keydown");
 
     keyboard.connect(surface.el);
