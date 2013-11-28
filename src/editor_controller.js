@@ -3,13 +3,18 @@
 var Commander = require("substance-commander");
 var DocumentController = require("substance-document").Controller;
 
-// A simple Richtext Editor
+// A Controller that makes Nodes and a Document.Container editable
 // ========
 //
 // This editor is tailored to a very simple use-case: documents that consist only
-// of Text, Headings, and Lists.
+// of Text, Headings, and Lists. These nodes are presented in a flow and
+// editing is similar as it is known from GDocs or Microsoft Word,
+// and not structurally as in earlier Substance versions
+// or known from other Web-based editors (e.g. medium.com).
+// By providing a custom factory for Node editors it is possible
+// to control what and how the content is editable.
 
-var RichTextEditor = function(document, editorFactory, options) {
+var EditorController = function(document, editorFactory, options) {
   options = options || {};
   DocumentController.call(this, document, options);
   this.document = document;
@@ -18,7 +23,7 @@ var RichTextEditor = function(document, editorFactory, options) {
   this.editors = {};
 };
 
-RichTextEditor.Prototype = function() {
+EditorController.Prototype = function() {
 
   // var __super__ = DocumentController.prototype;
 
@@ -240,7 +245,7 @@ RichTextEditor.Prototype = function() {
   };
 
   this.changeType = function(newType, data) {
-    console.log("RichTextEditor.changeType()", newType, data);
+    console.log("EditorController.changeType()", newType, data);
 
     if (this.selection.isNull()) {
       console.error("Nothing selected.");
@@ -378,10 +383,10 @@ RichTextEditor.Prototype = function() {
 
 };
 
-RichTextEditor.Prototype.prototype = DocumentController.prototype;
-RichTextEditor.prototype = new RichTextEditor.Prototype();
+EditorController.Prototype.prototype = DocumentController.prototype;
+EditorController.prototype = new EditorController.Prototype();
 
-RichTextEditor.Keyboard = function(docCtrl) {
+EditorController.Keyboard = function(docCtrl) {
 
   var keyboard = new Commander.Mousetrap();
 
@@ -485,4 +490,4 @@ RichTextEditor.Keyboard = function(docCtrl) {
   };
 };
 
-module.exports = RichTextEditor;
+module.exports = EditorController;
