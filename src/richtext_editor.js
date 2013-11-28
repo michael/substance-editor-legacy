@@ -423,7 +423,7 @@ RichTextEditor.Keyboard = function(docCtrl) {
       docCtrl.write("\n");
     }), "keydown");
 
-    keyboard.bind(["space"], surface.manipulate(function() {
+    keyboard.bind(["space", "shift+space"], surface.manipulate(function() {
       docCtrl.write(" ");
     }), "keydown");
 
