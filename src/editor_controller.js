@@ -402,6 +402,7 @@ EditorController.Keyboard = function(docCtrl) {
         "ctrl+shift+up", "ctrl+shift+down", "ctrl+shift+left", "ctrl+shift+right",
         "alt+up", "alt+down", "alt+left", "alt+right",
         "alt+shift+up", "alt+shift+down", "alt+shift+left", "alt+shift+right",
+        "command+up", "command+down", "command+left", "command+right"
     ], function() {
       surface.onCursorMoved();
     }, "keydown");
