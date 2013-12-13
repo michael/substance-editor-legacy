@@ -31,6 +31,11 @@ var BasicEditing = function() {
 
   this.actions = [
 
+    function() {
+      assert.fail("Not implemented.");
+    }
+
+    /*
     "Insert some text", function() {
       this.insertContent(P1);
     },
