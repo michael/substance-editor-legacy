@@ -2,6 +2,8 @@
 
 var Commander = require("substance-commander");
 var DocumentController = require("substance-document").Controller;
+var util = require("substance-util");
+var _ = require("underscore");
 
 // A Controller that makes Nodes and a Document.Container editable
 // ========
@@ -85,35 +87,11 @@ EditorController.Prototype = function() {
       return;
     }
     var session = this.startManipulation();
-    var sel = session.sel;
 
-    var node = sel.getNodes()[0];
-    var cursorPos = sel.range().start;
-    var nodePos = cursorPos[0];
-    var charPos = cursorPos[1];
-
-    // Get the editor and ask for permission to break the node at the given position
-    var editor = this.getEditor(node);
-    if (!editor.canBreak(session, node, charPos)) {
-      console.log("Can not break at the given position.");
-      return;
+    if (this.__breakNode(session)) {
+      session.save();
+      this.selection.set(session.sel);
     }
-
-    // if the selection is expanded then delete first
-    // Note: this.__deleteSelection collapses the session cursor.
-    if (!sel.isCollapsed()) {
-      if (!this.__deleteSelection(session)) {
-        console.log("Could not delete the selected content");
-        return;
-      }
-    }
-
-    // Let the editor apply operations to break the node
-    editor.breakNode(session, node, nodePos, charPos);
-    session.save();
-    // update the cursor
-    var newCursorPos = [nodePos+1, 0];
-    this.selection.set(newCursorPos);
   };
 
   // Create an annotation of given type for the current selection
@@ -269,6 +247,98 @@ EditorController.Prototype = function() {
     editor.changeType(session, node, nodePos, newType, data);
     session.save();
   };
+
+  this.canInsert = function() {
+    var sel = this.selection;
+    if (sel.isNull()) {
+      return false;
+    }
+    var node = sel.getNodes()[0];
+    var cursorPos = sel.range().start;
+    var charPos = cursorPos[1];
+
+    // Get the editor and ask for permission to break the node at the given position
+    var editor = this.getEditor(node);
+    return editor.canBreak(this.session, node, charPos);
+  };
+
+  this.insertNode = function(type, data) {
+    if (this.selection.isNull()) {
+      throw new Error("Selection is null!");
+    }
+    var session = this.startManipulation();
+    var sel = session.sel;
+
+    if (this.__breakNode(session)) {
+      var cursorPos = sel.range().start;
+      var nodePos = cursorPos[0];
+      // TODO: create a node with default values
+      var newNode = {
+        id: type + "_" +util.uuid(),
+        type: type
+      };
+      if (data) {
+        _.extend(newNode, data);
+      }
+      session.doc.create(newNode);
+      session.doc.show(session.view, newNode.id, nodePos);
+
+      session.save();
+    }
+  };
+
+  // HACK: this should be created dynamically...
+  var allowedActions = [
+    {
+      action: "create",
+      type: "heading",
+      data: {
+        level: 1
+      }
+    }
+  ];
+  util.freeze(allowedActions);
+
+  this.getAllowedActions = function() {
+    if (this.canInsert()) {
+      return allowedActions;
+    } else {
+      return [];
+    }
+  };
+
+  this.__breakNode = function(session) {
+    var sel = session.sel;
+    var node = sel.getNodes()[0];
+    var cursorPos = sel.range().start;
+    var nodePos = cursorPos[0];
+    var charPos = cursorPos[1];
+
+    // Get the editor and ask for permission to break the node at the given position
+    var editor = this.getEditor(node);
+    if (!editor.canBreak(session, node, charPos)) {
+      return false;
+    }
+
+    // if the selection is expanded then delete first
+    // Note: this.__deleteSelection collapses the session cursor.
+    if (!sel.isCollapsed()) {
+      if (!this.__deleteSelection(session)) {
+        console.log("Could not delete the selected content");
+        return false;
+      }
+    }
+
+    // Let the editor apply operations to break the node
+    editor.breakNode(session, node, nodePos, charPos);
+
+    // update the cursor
+    var newCursorPos = [nodePos+1, 0];
+    sel.set(newCursorPos);
+
+    return true;
+  };
+
 
   this.__deleteSelection = function(session) {
     var sel = session.sel;
