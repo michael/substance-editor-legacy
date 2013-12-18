@@ -69,10 +69,20 @@ Container.Prototype = function() {
     for (var i = 0; i < components.length; i++) {
       var component = components[i];
       if (_.isEqual(component.path, path)) {
-        component.pos = i;
         return component;
       }
     }
+
+    if (path.length === 1) {
+      var id = path[0];
+      var roots = this.__roots;
+      for (var j = 0; j < roots.length; j++) {
+        if (roots[j] === id) {
+          return components[j];
+        }
+      }
+    }
+
     throw new Error("Could not find a view component for path " + JSON.stringify(path));
   };
 
