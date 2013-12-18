@@ -3,37 +3,29 @@
 var _ = require("underscore");
 var View = require("substance-application").View;
 var util = require("substance-util");
+var Keyboard = require("./surface_keyboard");
 
 // Substance.Surface
 // ==========================================================================
 
-var Surface = function(docCtrl, options) {
+var Surface = function(docCtrl, renderer) {
   View.call(this);
 
-  options = _.extend({
-    editable: true
-  }, options);
-  this.options = options;
-
-  if (this.options.renderer) {
-    this.renderer = this.options.renderer;
-  } else {
-    this.renderer = new docCtrl.__document.constructor.Renderer(docCtrl);
-  }
-
   this.docCtrl = docCtrl;
+  this.renderer = renderer;
 
   // Pull out the registered nodetypes on the written article
-  this.nodeTypes = docCtrl.__document.nodeTypes;
+  this.nodeTypes = docCtrl.document.nodeTypes;
   this.nodes = this.renderer.nodes;
 
   this.$el.addClass('surface');
 
-  // Shouldn't this be done outside?
-  this.$el.addClass(this.docCtrl.view);
+  this.listenTo(this.docCtrl.document, "property:updated", this.onUpdateView);
+  this.listenTo(this.docCtrl.document, "graph:reset", this.reset);
 
-  this.listenTo(this.docCtrl.__document, "property:updated", this.onUpdateView);
-  this.listenTo(this.docCtrl.__document, "graph:reset", this.reset);
+  if (docCtrl.isEditor()) {
+    Surface.addEditingBehavior(this, new Keyboard(docCtrl));
+  }
 };
 
 
@@ -41,22 +33,62 @@ Surface.Prototype = function() {
 
   // Private helpers
   // ---------------
-  var _findNodeElement = function(node) {
-    var current = node;
+
+  var _extractPath = function(el) {
+    var path = [];
+    var current = el;
     while(current !== undefined) {
+      // node-views
       if ($(current).is(".content-node")) {
-        return current;
+        var id = current.getAttribute("id");
+        if (!id) {
+          throw new Error("Every element with class 'content-node' must have an 'id' attribute.");
+        }
+        path.unshift(id);
+
+        // STOP here
+        return path;
       }
+      // node-property views
+      else if ($(current).is(".node-property")) {
+        var p = current.getAttribute("data-path");
+        if (!p) {
+          throw new Error("Every element with class 'node-property' must have an 'data-path' attribute.");
+        }
+        path.unshift(p);
+      }
+
       current = current.parentElement;
     }
+
     return null;
+  };
+
+  var _mapDOMCoordinates = function(el, offset) {
+    var nodePos, charPos;
+
+    var container = this.docCtrl.container;
+
+    // extract a path by looking for ".content-node" and ".node-property"
+    var elementPath = _extractPath(el);
+
+    if (!elementPath) {
+      throw new Error("Could not find node.");
+    }
+
+    // get the position from the container
+    var element = container.lookup(elementPath);
+
+    nodePos = element.pos;
+    charPos = element.view.getCharPosition(el, offset);
+
+    return [nodePos, charPos];
   };
 
   // Read out current DOM selection and update selection in the model
   // ---------------
 
   this.updateSelection = function(/*e*/) {
-    // console.log("Surface.updateSelection()");
     var wSel = window.getSelection();
 
     // HACK: sometimes it happens that the selection anchor node is undefined.
@@ -76,11 +108,6 @@ Surface.Prototype = function() {
     var wStartPos;
     var wEndPos;
 
-    // Preparing information for EOL-HACK (see below).
-    // The hack only needs to be applied of the mouse event is in a different 'line'
-    // than the DOM Range provided by the browser
-    //Surface.Hacks.prepareEndOfLineHack.call(this, e, wRange);
-
     // Note: there are three different cases:
     // 1. selection started at startContainer (regular)
     // 2. selection started at endContainer (reverse)
@@ -96,21 +123,16 @@ Surface.Prototype = function() {
       wEndPos = tmp;
     }
 
-    var startNode = _findNodeElement.call(this, wStartPos[0]);
-    var endNode = _findNodeElement.call(this, wEndPos[0]);
+    var startPos = _mapDOMCoordinates.call(this, wStartPos[0], wStartPos[1]);
 
-    var startNodeId = startNode.getAttribute("id");
-    var startNodePos = this.docCtrl.getPosition(startNodeId) ;
-    var startCharPos = this.nodes[startNodeId].getCharPosition(wStartPos[0], wStartPos[1]);
+    var endPos;
+    if (wRange.collapsed) {
+      endPos = startPos;
+    } else {
+      endPos = _mapDOMCoordinates.call(this, wEndPos[0], wEndPos[1]);
+    }
 
-    var endNodeId = endNode.getAttribute("id");
-    var endNodePos = this.docCtrl.getPosition(endNodeId);
-    var endCharPos = this.nodes[endNodeId].getCharPosition(wEndPos[0], wEndPos[1]);
-
-    // the selection range in Document.Selection coordinates
-    var startPos = [startNodePos, startCharPos];
-    var endPos = [endNodePos, endCharPos];
-
+    console.log("Surface.updateSelection()", startPos, endPos);
     this.docCtrl.selection.set({start: startPos, end: endPos});
   };
 
@@ -119,31 +141,31 @@ Surface.Prototype = function() {
   // --------
   //
 
+  var _mapModelCoordinates = function(pos) {
+    var container = this.docCtrl.container;
+    var element = container.getElement(pos[0]);
+    var wCoor = element.view.getDOMPosition(pos[1]);
+    return wCoor;
+  };
+
   this.renderSelection = function() {
+    var sel = this.docCtrl.selection;
 
-    if (this.docCtrl.selection.isNull()) {
-      this.$cursor.hide();
-      return;
-    }
-
-    // Hide native selection in favor of our custom one
     var wSel = window.getSelection();
-
-    var range = this.docCtrl.selection.range();
-    var startNode = this.docCtrl.getNodeFromPosition(range.start[0]);
-    var startNodeView = this.renderer.nodes[startNode.id];
-    var wStartPos = startNodeView.getDOMPosition(range.start[1]);
-
-    var endNode = this.docCtrl.getNodeFromPosition(range.end[0]);
-    var endNodeView = this.renderer.nodes[endNode.id];
-    var wEndPos = endNodeView.getDOMPosition(range.end[1]);
+    var range = sel.range();
 
     var wRange = document.createRange();
+
+    var wStartPos = _mapModelCoordinates.call(this, range.start);
     wRange.setStart(wStartPos.startContainer, wStartPos.startOffset);
-    wRange.setEnd(wEndPos.endContainer, wEndPos.endOffset);
+
+    if (!sel.isCollapsed()) {
+      var wEndPos = _mapModelCoordinates.call(this, range.end);
+      wRange.setEnd(wEndPos.endContainer, wEndPos.endOffset);
+    }
+
     wSel.removeAllRanges();
     wSel.addRange(wRange);
-
   };
 
   // Render it
