@@ -38,6 +38,7 @@ Surface.Prototype = function() {
     var path = [];
     var current = el;
     while(current !== undefined) {
+
       // node-views
       if ($(current).is(".content-node")) {
         var id = current.getAttribute("id");
@@ -49,13 +50,10 @@ Surface.Prototype = function() {
         // STOP here
         return path;
       }
-      // node-property views
-      else if ($(current).is(".node-property")) {
+      else if (current.getAttribute) {
+        // if there is a path attibute we collect it
         var p = current.getAttribute("data-path");
-        if (!p) {
-          throw new Error("Every element with class 'node-property' must have an 'data-path' attribute.");
-        }
-        path.unshift(p);
+        if (p) path.unshift(p);
       }
 
       current = current.parentElement;
@@ -77,10 +75,10 @@ Surface.Prototype = function() {
     }
 
     // get the position from the container
-    var element = container.lookup(elementPath);
+    var component = container.lookup(elementPath);
 
-    nodePos = element.pos;
-    charPos = element.view.getCharPosition(el, offset);
+    nodePos = component.pos;
+    charPos = component.view.getCharPosition(el, offset);
 
     return [nodePos, charPos];
   };
@@ -143,8 +141,8 @@ Surface.Prototype = function() {
 
   var _mapModelCoordinates = function(pos) {
     var container = this.docCtrl.container;
-    var element = container.getElement(pos[0]);
-    var wCoor = element.view.getDOMPosition(pos[1]);
+    var component = container.getComponent(pos[0]);
+    var wCoor = component.view.getDOMPosition(pos[1]);
     return wCoor;
   };
 

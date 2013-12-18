@@ -127,7 +127,7 @@ EditorController.Prototype = function() {
     session.save();
     // Note: it feels better when the selection is collapsed after setting the
     // annotation style
-    session.sel.collapse("right");
+    // session.sel.collapse("right");
     this.selection.set(session.sel);
   };
 
@@ -153,14 +153,15 @@ EditorController.Prototype = function() {
   this.__write = function(session, text) {
     var sel = session.sel;
 
-    var node = sel.getNodes()[0];
-    var cursorPos = sel.range().start;
-    var nodePos = cursorPos[0];
-    var charPos = cursorPos[1];
+    var cursor = sel.getCursor()
+    var nodePos = cursor.nodePos;
+    var charPos = cursor.charPos;
 
-    // Get the editor and ask for permission to insert text at the given position
+    var node = session.container.getRootNodeFromPos(nodePos);
+    var component = session.container.getComponent(nodePos);
     var editor = this.getEditor(node);
-    if (!editor.canInsert(session, node, charPos)) {
+
+    if (!editor.canInsertContent(session, component, charPos)) {
       console.log("Can not insert at the given position.");
       return false;
     }
@@ -175,7 +176,7 @@ EditorController.Prototype = function() {
     }
 
     // Ask for an operation and abort if no operation is given.
-    editor.insertContent(session, node, charPos, text);
+    editor.insertContent(session, component, charPos, text);
 
     // update the cursor
     sel.set([nodePos, charPos + text.length]);
@@ -203,20 +204,24 @@ EditorController.Prototype = function() {
 
     var session = this.startManipulation();
     var sel = session.sel;
-    var node = sel.getNodes()[0];
 
+    var cursor = sel.getCursor()
+    var nodePos = cursor.nodePos;
+
+    var node = session.container.getRootNodeFromPos(nodePos);
+    var component = session.container.getComponent(nodePos);
     var editor = this.getEditor(node);
-    if (!editor.canIndent(session, node, direction)) {
+
+    if (!editor.canIndent(session, component, direction)) {
       console.log("Can not indent at the given position.");
       return;
     }
 
-    editor.indent(session, node, direction);
+    editor.indent(session, component, direction);
     session.save();
   };
 
   this.addReference = function(label, type, data) {
-
     if (this.selection.isNull()) {
       console.error("Nothing is selected.");
       return;
@@ -232,8 +237,8 @@ EditorController.Prototype = function() {
         start: [cursor.nodePos, cursor.charPos-label.length],
         end: [cursor.nodePos, cursor.charPos]
       });
-
       session.annotator.annotate(sel, type, data);
+
       // Note: it feels better when the selection is collapsed after setting the
       // annotation style
       sel.collapse("right");
@@ -241,12 +246,10 @@ EditorController.Prototype = function() {
       session.save();
       this.selection.set(session.sel);
     }
-
   };
 
   this.changeType = function(newType, data) {
     console.log("EditorController.changeType()", newType, data);
-
     if (this.selection.isNull()) {
       console.error("Nothing selected.");
       return;
@@ -259,9 +262,9 @@ EditorController.Prototype = function() {
     var session = this.startManipulation();
     var sel = session.sel;
     var nodePos = session.sel.start[0];
-    var node = sel.getNodes()[0];
-
+    var node = session.container.getRootNodeFromPos(nodePos);
     var editor = this.getEditor(node);
+
     if (!editor.canChangeType(session, node, newType)) {
       return;
     }
@@ -270,16 +273,17 @@ EditorController.Prototype = function() {
     session.save();
   };
 
-  this.canInsert = function() {
+  this.canInsertNode = function() {
     var sel = this.selection;
     if (sel.isNull()) {
       return false;
     }
-    var node = sel.getNodes()[0];
-    var cursorPos = sel.range().start;
-    var charPos = cursorPos[1];
 
-    // Get the editor and ask for permission to break the node at the given position
+    var cursorPos = sel.range().start;
+    var nodePos = cursorPos[0];
+    var charPos = cursorPos[1];
+    var node = this.container.getRootNodeFromPos(nodePos);
+
     var editor = this.getEditor(node);
     return editor.canBreak(this.session, node, charPos);
   };
@@ -322,7 +326,7 @@ EditorController.Prototype = function() {
   util.freeze(allowedActions);
 
   this.getAllowedActions = function() {
-    if (this.canInsert()) {
+    if (this.canInsertNode()) {
       return allowedActions;
     } else {
       return [];
@@ -331,10 +335,10 @@ EditorController.Prototype = function() {
 
   this.__breakNode = function(session) {
     var sel = session.sel;
-    var node = sel.getNodes()[0];
     var cursorPos = sel.range().start;
     var nodePos = cursorPos[0];
     var charPos = cursorPos[1];
+    var node = this.container.getRootNodeFromPos(nodePos);
 
     // Get the editor and ask for permission to break the node at the given position
     var editor = this.getEditor(node);
@@ -364,13 +368,14 @@ EditorController.Prototype = function() {
 
   this.__deleteSelection = function(session) {
     var sel = session.sel;
-    var nodes = sel.getNodes();
 
     var success;
-    if (nodes.length === 1) {
-      success = this.__deleteSingle(session, nodes[0]);
-    } else {
+    if (sel.hasMultipleNodes()) {
       success = this.__deleteMulti(session);
+    } else {
+      var pos = sel.start[0];
+      var component = session.container.getComponent(pos);
+      success = this.__deleteSingle(session, component);
     }
 
     // in any case after deleting the cursor shall be
@@ -380,19 +385,20 @@ EditorController.Prototype = function() {
     return success;
   };
 
-  this.__deleteSingle = function(session, node) {
+  this.__deleteSingle = function(session, component) {
     var sel = session.sel;
+    var node = component.node;
     var startChar = sel.startChar();
     var endChar = sel.endChar();
     var editor = this.getEditor(node);
 
     // Check if the editor allows to delete
-    if (!editor.canDelete(session, node, startChar, endChar)) {
-      console.log("Can not delete node", node.type, startChar, endChar);
+    if (!editor.canDeleteContent(session, component, startChar, endChar)) {
+      console.log("Can not delete content", node.type, startChar, endChar);
       return false;
     }
 
-    editor.deleteContent(session, node, startChar, endChar);
+    editor.deleteContent(session, component, startChar, endChar);
     return true;
   };
 
@@ -411,12 +417,12 @@ EditorController.Prototype = function() {
 
       if (i === 0 || i === ranges.length-1) {
         editors[i] = this.getEditor(r.node);
-        canDelete &= editors[i].canDelete(session, r.node, r.start, r.end);
+        canDelete &= editors[i].canDeleteContent(session, r.component, r.start, r.end);
       } else {
         // TODO: who is to decide if a top-level node can be deleted
         // this should be the ViewEditor
         editors[i] = this.getEditor({type: "view", id: this.view});
-        canDelete = editors[i].canDelete(session, r.node, r.nodePos);
+        canDelete = editors[i].canDeleteNode(session, r.node, r.nodePos);
       }
 
       if (!canDelete) {
@@ -429,7 +435,7 @@ EditorController.Prototype = function() {
     for (i = 0; i < ranges.length; i++) {
       r = ranges[i];
       if (i === 0 || i === ranges.length-1) {
-        editors[i].deleteContent(session, r.node, r.start, r.end);
+        editors[i].deleteContent(session, r.component, r.start, r.end);
       } else {
         editors[i].deleteNode(session, r.node, r.nodePos);
         session.doc.delete(r.node.id);
@@ -455,7 +461,7 @@ EditorController.Prototype = function() {
       return false;
     }
 
-    if (!viewEditor.canDelete(session, second, nodePos)) {
+    if (!viewEditor.canDeleteNode(session, second, nodePos)) {
       return false;
     }
 
@@ -478,6 +484,7 @@ EditorController.Prototype = function() {
   // This is used to set the selection when applying operations that are not triggered by the user interface,
   // e.g., when rolling back or forth with the Chronicle.
   // EXPERIMENTAL
+  // FIXME this is broken due to a cleanup during the Composite refactor
 
   var _updateSelection = function(op) {
 
@@ -511,25 +518,22 @@ EditorController.Prototype = function() {
       var node = doc.get(op.path[0]);
 
       if (!node) {
-        console.log("Hmmm... this.should not happen, though.");
+        console.log("Hmmm... this.should not happen.");
         return;
       }
 
       var nodePos = -1;
       var charPos = -1;
 
-      if (node.isComposite()) {
-        // TODO: there is no good concept yet
-      } else if (node.getChangePosition) {
-        nodePos = container.getPosition(node.id);
-        charPos = node.getChangePosition(op);
-      }
+      // if (node.getChangePosition) {
+      //   nodePos = container.getPosition(node.id);
+      //   charPos = node.getChangePosition(op);
+      // }
 
       if (nodePos >= 0 && charPos >= 0) {
         return [nodePos, charPos];
       }
     }
-
 
     // TODO: actually, this is not yet an appropriate approach to update the cursor position
     // for compounds.
@@ -566,6 +570,7 @@ EditorController.Prototype = function() {
       view: this.view,
       sel: sel,
       annotator: annotator,
+      container: container,
       save: function() { doc.save(); }
     };
   };

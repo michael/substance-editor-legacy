@@ -41,26 +41,38 @@ Container.Prototype = function() {
         throw new Error("Aaaaah! no view available for " + id);
       }
       var components = nodeView.getViewComponents();
+      if (!components) {
+        throw new Error("NodeView did not provide view components: " + nodeView.type);
+      }
       for (var j = 0; j < components.length; j++) {
-        __components.push(components[j]);
+        var component = components[j];
+        component.pos = __components.length;
+        component.nodePos = i;
+        __components.push(component);
         __roots.push(rootNodes[i]);
       }
     }
-
     this.__components = __components;
     this.__roots = __roots;
     this.view = view;
   };
 
+  this.getComponents = function() {
+    if (!this.__components) {
+      this.rebuild();
+    }
+    return this.__components;
+  }
+
   this.lookup = function(path) {
-    for (var i = 0; i < this.__components.length; i++) {
-      var component = this.__components[i];
+    var components = this.getComponents();
+    for (var i = 0; i < components.length; i++) {
+      var component = components[i];
       if (_.isEqual(component.path, path)) {
         component.pos = i;
         return component;
       }
     }
-
     throw new Error("Could not find a view component for path " + JSON.stringify(path));
   };
 
@@ -85,16 +97,23 @@ Container.Prototype = function() {
   };
 
   this.getLength = function(pos) {
+    var components = this.getComponents();
     if (pos === undefined) {
-      return this.__components.length;
+      return components.length;
     } else {
-      return this.__components[pos].getLength();
+      return components[pos].getLength();
     }
   };
 
+  this.getRootNodeFromPos = function(pos) {
+    if (!this.__roots) this.rebuild();
+    return this.document.get(this.__roots[pos]);
+  };
+
   this.lookupRootNode = function(nodeId) {
-    for (var i = 0; i < this.__components.length; i++) {
-      var component = this.__components[i];
+    var components = this.getComponents();
+    for (var i = 0; i < components.length; i++) {
+      var component = components[i];
       switch(component.type) {
       case "node":
         if (component.node.id === nodeId) return this.__roots[i];
@@ -104,15 +123,15 @@ Container.Prototype = function() {
         if (component.path[0] === nodeId) return this.__roots[i];
         break;
       default:
-        throw new Error("Not implemented.");
+        // throw new Error("Not implemented.");
       }
     }
-
     throw new Error("Could not fina a root node for the given id:" + nodeId);
   };
 
-  this.getElement = function(pos) {
-    return this.__components[pos];
+  this.getComponent = function(pos) {
+    var components = this.getComponents();
+    return components[pos];
   };
 
   this.getTopLevelNodes = function() {
