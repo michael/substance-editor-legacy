@@ -1,9 +1,12 @@
 "use strict";
 
-var Commander = require("substance-commander");
-var DocumentController = require("substance-document").Controller;
-var util = require("substance-util");
 var _ = require("underscore");
+var util = require("substance-util");
+var Document = require("substance-document");
+var Annotator = Document.Annotator;
+var Selection = Document.Selection;
+var Container = require("./container");
+var Operator = require("substance-operator");
 
 // A Controller that makes Nodes and a Document.Container editable
 // ========
@@ -16,18 +19,37 @@ var _ = require("underscore");
 // By providing a custom factory for Node editors it is possible
 // to control what and how the content is editable.
 
+// TODO: there is an ugliness now with the Container. Container is rather coupled to a Renderer.
+// Selections occur in the view domain and thus depend on the rendering.
+
 var EditorController = function(document, editorFactory, options) {
   options = options || {};
-  DocumentController.call(this, document, options);
-  this.document = document;
 
+  this.document = document;
+  this.view = options.view || 'content';
+  this.annotator = new Annotator(document);
   this.editorFactory = editorFactory;
   this.editors = {};
+
+  // HACK: Container depends on a renderer. You can provide a renderer via options.renderer
+  // or you can set the renderer afterwards. Then you have to call container.rebuild().
+  this.container = new Container(document, this.view, options.renderer);
+  this.selection = new Selection(this.container);
+
+  // HACK: we will introduce a DocumentSession which is the combination
+  // of Document, Container, Selection and Annotator
+  this.session = {
+    "controller": this,
+    "document": this.document,
+    "selection": this.selection,
+    "container": this.container,
+    "annotator": this.annotator
+  };
 };
 
 EditorController.Prototype = function() {
 
-  // var __super__ = DocumentController.prototype;
+  _.extend(this, util.Events.Listener);
 
   // Delete current selection
   // --------
@@ -451,114 +473,113 @@ EditorController.Prototype = function() {
     return this.editors[node.id];
   };
 
+  // Updates the selection considering a given operation
+  // -------
+  // This is used to set the selection when applying operations that are not triggered by the user interface,
+  // e.g., when rolling back or forth with the Chronicle.
+  // EXPERIMENTAL
+
+  var _updateSelection = function(op) {
+
+    // TODO: this needs a different approach.
+    // With compounds, the atomic operation do not directly represent a natural behaviour
+    // I.e., the last operation applied does not represent the position which is
+    // desired for updating the cursor
+    // Probably, we need to handle that behavior rather manually knowing
+    // about possible compound types...
+    // Maybe we could use the `alias` field of compound operations to leave helpful information...
+    // However, we post-pone this task as it is rather cosmetic
+
+    if (!op) return;
+
+    // var view = this.view;
+    var doc = this.document;
+    var container = this.container;
+
+    function getUpdatedPostion(op) {
+
+      // We need the last update which is relevant to positioning...
+      // 1. Update of the content of leaf nodes: ask node for an updated position
+      // 2. Update of a reference in a composite node:
+      // TODO: fixme. This does not work with deletions.
+
+      // changes to views or containers are always updates or sets
+      // as they are properties
+      if (op.type !== "update" && op.type !== "set") return;
+
+      // handle changes to the view of nodes
+      var node = doc.get(op.path[0]);
+
+      if (!node) {
+        console.log("Hmmm... this.should not happen, though.");
+        return;
+      }
+
+      var nodePos = -1;
+      var charPos = -1;
+
+      if (node.isComposite()) {
+        // TODO: there is no good concept yet
+      } else if (node.getChangePosition) {
+        nodePos = container.getPosition(node.id);
+        charPos = node.getChangePosition(op);
+      }
+
+      if (nodePos >= 0 && charPos >= 0) {
+        return [nodePos, charPos];
+      }
+    }
+
+
+    // TODO: actually, this is not yet an appropriate approach to update the cursor position
+    // for compounds.
+    Operator.Helpers.each(op, function(_op) {
+      var pos = getUpdatedPostion(_op);
+      if (pos) {
+        this.selection.set(pos);
+        // breaking the iteration
+        return false;
+      }
+    }, this, "reverse");
+
+  };
+
+  this.undo = function() {
+    if (!this.document.chronicle) return;
+    var op = this.document.chronicle.rewind();
+    _updateSelection.call(this, op);
+  };
+
+  this.redo = function() {
+    if (!this.document.chronicle) return;
+    var op = this.document.chronicle.forward();
+    _updateSelection.call(this, op);
+  };
+
+  this.startManipulation = function() {
+    var doc = this.document.startSimulation();
+    var annotator = new Annotator(doc, {withTransformation: true});
+    var container = new Container(doc, this.view, this.container.renderer);
+    var sel = new Selection(container, this.selection);
+    return {
+      doc: doc,
+      view: this.view,
+      sel: sel,
+      annotator: annotator,
+      save: function() { doc.save(); }
+    };
+  };
+
+  this.dispose = function() {
+    this.annotator.dispose();
+  };
+
+  this.isEditor = function() {
+    return true;
+  };
+
 };
 
-EditorController.Prototype.prototype = DocumentController.prototype;
 EditorController.prototype = new EditorController.Prototype();
-
-EditorController.Keyboard = function(docCtrl) {
-
-  var keyboard = new Commander.Mousetrap();
-
-  // Connects this keyboard to a Surface
-  // --------
-  // Note: the argument `surface` is a Surface.Editing instance
-
-  this.connect = function(surface) {
-    keyboard.bind([
-        "up", "down", "left", "right",
-        "shift+up", "shift+down", "shift+left", "shift+right",
-        "ctrl+up", "ctrl+down", "ctrl+left", "ctrl+right",
-        "ctrl+shift+up", "ctrl+shift+down", "ctrl+shift+left", "ctrl+shift+right",
-        "alt+up", "alt+down", "alt+left", "alt+right",
-        "alt+shift+up", "alt+shift+down", "alt+shift+left", "alt+shift+right",
-        "command+up", "command+down", "command+left", "command+right"
-    ], function() {
-      surface.onCursorMoved();
-    }, "keydown");
-
-    // Note: these stupid 'surface.manipulate' stuff is currently necessary
-    // as I could not find another way to distinguish the cases for regular text input
-    // and multi-char input. It would not be necessary, if we had a robust way
-    // to recognize native key events for that complex chars...
-    // However, for now that dirt... we can this streamline in future - for sure...
-
-    keyboard.bind(["backspace"], surface.manipulate(function() {
-      docCtrl.delete("left");
-    }), "keydown");
-
-    keyboard.bind(["del"], surface.manipulate(function() {
-      docCtrl.delete("right");
-    }), "keydown");
-
-    keyboard.bind(["enter"], surface.manipulate(function() {
-      docCtrl.breakNode();
-    }), "keydown");
-
-    keyboard.bind(["shift+enter"], surface.manipulate(function() {
-      docCtrl.write("\n");
-    }), "keydown");
-
-    keyboard.bind(["space", "shift+space"], surface.manipulate(function() {
-      docCtrl.write(" ");
-    }), "keydown");
-
-    keyboard.bind(["tab"], surface.manipulate(function() {
-      docCtrl.indent("right");
-    }), "keydown");
-
-    keyboard.bind(["shift+tab"], surface.manipulate(function() {
-      docCtrl.indent("left");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+z"], surface.manipulate(function() {
-      docCtrl.undo();
-    }), "keydown");
-
-    keyboard.bind(["ctrl+shift+z"], surface.manipulate(function() {
-      docCtrl.redo();
-    }), "keydown");
-
-    keyboard.bind(["ctrl+b"], surface.manipulate(function() {
-      docCtrl.annotate("strong");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+i"], surface.manipulate(function() {
-      docCtrl.annotate("emphasis");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+c"], surface.manipulate(function() {
-      docCtrl.copy();
-    }), "keydown");
-
-    keyboard.bind(["ctrl+v"], surface.manipulate(function() {
-      docCtrl.paste();
-    }), "keydown");
-
-    // EXPERIMENTAL hooks for creating new node and annotation types
-
-    keyboard.bind(["ctrl+shift+c"], surface.manipulate(function() {
-      docCtrl.annotate("issue");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+shift+m"], surface.manipulate(function() {
-      docCtrl.annotate("math");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+t"], surface.manipulate(function() {
-      docCtrl.changeType("text");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+h"], surface.manipulate(function() {
-      docCtrl.changeType("heading", {"level": 1});
-    }), "keydown");
-
-    keyboard.connect(surface.el);
-  };
-
-  this.disconnect = function() {
-    keyboard.disconnect();
-  };
-};
 
 module.exports = EditorController;
