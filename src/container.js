@@ -3,7 +3,7 @@
 var _ = require("underscore");
 var util = require("substance-util");
 
-// The container must be much more view oriented as the actual visualized elements depend very much on the
+// The container must be much more view oriented as the actual visualized components depend very much on the
 // used renderers.
 
 var Container = function(document, name, renderer) {
@@ -16,7 +16,7 @@ var Container = function(document, name, renderer) {
   }
 
   this.view = container;
-  this.__elements = null;
+  this.__components = null;
   this.__roots = null;
 
   this.renderer = renderer;
@@ -26,7 +26,7 @@ var Container = function(document, name, renderer) {
 Container.Prototype = function() {
 
   this.rebuild = function() {
-    var __elements = [];
+    var __components = [];
     var __roots = [];
     var view = this.document.get(this.name);
 
@@ -40,28 +40,28 @@ Container.Prototype = function() {
       if (!nodeView) {
         throw new Error("Aaaaah! no view available for " + id);
       }
-      var elements = nodeView.getViewElements();
-      for (var j = 0; j < elements.length; j++) {
-        __elements.push(elements[j]);
+      var components = nodeView.getViewComponents();
+      for (var j = 0; j < components.length; j++) {
+        __components.push(components[j]);
         __roots.push(rootNodes[i]);
       }
     }
 
-    this.__elements = __elements;
+    this.__components = __components;
     this.__roots = __roots;
     this.view = view;
   };
 
   this.lookup = function(path) {
-    for (var i = 0; i < this.__elements.length; i++) {
-      var element = this.__elements[i];
-      if (_.isEqual(element.path, path)) {
-        element.pos = i;
-        return element;
+    for (var i = 0; i < this.__components.length; i++) {
+      var component = this.__components[i];
+      if (_.isEqual(component.path, path)) {
+        component.pos = i;
+        return component;
       }
     }
 
-    throw new Error("Could not find a view element for path " + JSON.stringify(path));
+    throw new Error("Could not find a view component for path " + JSON.stringify(path));
   };
 
   this.getNodes = function(idsOnly) {
@@ -86,22 +86,22 @@ Container.Prototype = function() {
 
   this.getLength = function(pos) {
     if (pos === undefined) {
-      return this.__elements.length;
+      return this.__components.length;
     } else {
-      return this.__elements[pos].getLength();
+      return this.__components[pos].getLength();
     }
   };
 
   this.lookupRootNode = function(nodeId) {
-    for (var i = 0; i < this.__elements.length; i++) {
-      var element = this.__elements[i];
-      switch(element.type) {
+    for (var i = 0; i < this.__components.length; i++) {
+      var component = this.__components[i];
+      switch(component.type) {
       case "node":
-        if (element.node.id === nodeId) return this.__roots[i];
+        if (component.node.id === nodeId) return this.__roots[i];
         break;
       case "property":
         // TODO: I am not sure here.
-        if (element.path[0] === nodeId) return this.__roots[i];
+        if (component.path[0] === nodeId) return this.__roots[i];
         break;
       default:
         throw new Error("Not implemented.");
@@ -112,7 +112,7 @@ Container.Prototype = function() {
   };
 
   this.getElement = function(pos) {
-    return this.__elements[pos];
+    return this.__components[pos];
   };
 
   this.getTopLevelNodes = function() {
