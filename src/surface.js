@@ -76,6 +76,7 @@ Surface.Prototype = function() {
 
     // get the position from the container
     var component = container.lookup(elementPath);
+    if (!component) return null;
 
     // TODO rethink when it is a good time to attach the view to the node surface
     if (!component.surface.hasView()) {
@@ -128,12 +129,14 @@ Surface.Prototype = function() {
     }
 
     var startPos = _mapDOMCoordinates.call(this, wStartPos[0], wStartPos[1]);
+    if (!startPos) return;
 
     var endPos;
     if (wRange.collapsed) {
       endPos = startPos;
     } else {
       endPos = _mapDOMCoordinates.call(this, wEndPos[0], wEndPos[1]);
+      if (!endPos) return;
     }
 
     console.log("Surface.updateSelection()", startPos, endPos);

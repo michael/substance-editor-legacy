@@ -85,7 +85,9 @@ Container.Prototype = function() {
       }
     }
 
-    throw new Error("Could not find a view component for path " + JSON.stringify(path));
+    console.error("Could not find a view component for path " + JSON.stringify(path));
+
+    return null;
   };
 
   this.getNodes = function(idsOnly) {
@@ -144,7 +146,8 @@ Container.Prototype = function() {
         // throw new Error("Not implemented.");
       }
     }
-    throw new Error("Could not fina a root node for the given id:" + nodeId);
+    console.error("Could not fina a root node for the given id:" + nodeId);
+    return null;
   };
 
   this.getComponent = function(pos) {
