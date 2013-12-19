@@ -113,7 +113,7 @@ EditorController.Prototype = function() {
 
     if (this.__breakNode(session)) {
       session.save();
-      this.selection.set(session.selsection);
+      this.selection.set(session.selection);
     }
   };
 
@@ -145,11 +145,11 @@ EditorController.Prototype = function() {
     var session = this.session;
 
     var selRange = this.selection.range();
-    var nodePos = selRange.start[0];
+    var pos = selRange.start[0];
     var range = [selRange.start[1], selRange.end[1]];
 
-    var node = session.container.getRootNodeFromPos(nodePos);
-    var component = session.container.getComponent(nodePos);
+    var node = session.container.getRootNodeFromPos(pos);
+    var component = session.container.getComponent(pos);
     var editor = this.getEditor(node);
 
     if (!editor.canAnnotate(session, component, type, range)) {
@@ -187,11 +187,11 @@ EditorController.Prototype = function() {
     var sel = session.selection;
 
     var cursor = sel.getCursor();
-    var nodePos = cursor.nodePos;
+    var pos = cursor.nodePos;
     var charPos = cursor.charPos;
 
-    var node = session.container.getRootNodeFromPos(nodePos);
-    var component = session.container.getComponent(nodePos);
+    var node = session.container.getRootNodeFromPos(pos);
+    var component = session.container.getComponent(pos);
     var editor = this.getEditor(node);
 
     if (!editor.canInsertContent(session, component, charPos)) {
@@ -212,7 +212,7 @@ EditorController.Prototype = function() {
     editor.insertContent(session, component, charPos, text);
 
     // update the cursor
-    sel.set([nodePos, charPos + text.length]);
+    sel.set([pos, charPos + text.length]);
 
     return true;
   };
@@ -239,10 +239,10 @@ EditorController.Prototype = function() {
     var sel = session.selection;
 
     var cursor = sel.getCursor();
-    var nodePos = cursor.nodePos;
+    var pos = cursor.nodePos;
 
-    var node = session.container.getRootNodeFromPos(nodePos);
-    var component = session.container.getComponent(nodePos);
+    var node = session.container.getRootNodeFromPos(pos);
+    var component = session.container.getComponent(pos);
     var editor = this.getEditor(node);
 
     if (!editor.canIndent(session, component, direction)) {
@@ -293,15 +293,15 @@ EditorController.Prototype = function() {
     }
 
     var session = this.startManipulation();
-    var nodePos = session.selection.start[0];
-    var node = session.container.getRootNodeFromPos(nodePos);
+    var pos = session.selection.start[0];
+    var node = session.container.getRootNodeFromPos(pos);
     var editor = this.getEditor(node);
 
     if (!editor.canChangeType(session, node, newType)) {
       return;
     }
 
-    editor.changeType(session, node, nodePos, newType, data);
+    editor.changeType(session, node, pos, newType, data);
     session.save();
   };
 
@@ -312,12 +312,14 @@ EditorController.Prototype = function() {
     }
 
     var cursorPos = sel.range().start;
-    var nodePos = cursorPos[0];
+    var pos = cursorPos[0];
     var charPos = cursorPos[1];
-    var node = this.container.getRootNodeFromPos(nodePos);
+
+    var component = this.container.getComponent(pos);
+    var node = component.node;
 
     var editor = this.getEditor(node);
-    return editor.canBreak(this.session, node, charPos);
+    return editor.canBreak(this.session, component, charPos);
   };
 
   this.insertNode = function(type, data) {
@@ -370,13 +372,16 @@ EditorController.Prototype = function() {
   this.__breakNode = function(session) {
     var sel = session.selection;
     var cursorPos = sel.range().start;
-    var nodePos = cursorPos[0];
+    var pos = cursorPos[0];
+    var nodePos = session.container.getNodePos(pos);
     var charPos = cursorPos[1];
-    var node = this.container.getRootNodeFromPos(nodePos);
+
+    var component = session.container.getComponent(pos);
+    var node = session.container.getRootNodeFromPos(pos);
 
     // Get the editor and ask for permission to break the node at the given position
     var editor = this.getEditor(node);
-    if (!editor.canBreak(session, node, charPos)) {
+    if (!editor.canBreak(session, component, charPos)) {
       return false;
     }
 
@@ -390,11 +395,7 @@ EditorController.Prototype = function() {
     }
 
     // Let the editor apply operations to break the node
-    editor.breakNode(session, node, nodePos, charPos);
-
-    // update the cursor
-    var newCursorPos = [nodePos+1, 0];
-    sel.set(newCursorPos);
+    editor.breakNode(session, component,charPos);
 
     return true;
   };
