@@ -6,7 +6,7 @@ var util = require("substance-util");
 // The container must be much more view oriented as the actual visualized components depend very much on the
 // used renderers.
 
-var Container = function(document, name, renderer) {
+var Container = function(document, name, surfaces) {
   this.document = document;
   this.name = name;
 
@@ -19,30 +19,32 @@ var Container = function(document, name, renderer) {
   this.__components = null;
   this.__roots = null;
 
-  this.renderer = renderer;
+  this.surfaces = surfaces;
   this.rebuild();
+
+  this.listenTo(this.document, "operation:applied", this.update);
 };
 
 Container.Prototype = function() {
+
+  _.extend(this, util.Events);
 
   this.rebuild = function() {
     var __components = [];
     var __roots = [];
     var view = this.document.get(this.name);
 
-    if (!this.renderer) return;
-
     var rootNodes = view.nodes;
 
     for (var i = 0; i < rootNodes.length; i++) {
       var id = rootNodes[i];
-      var nodeView = this.renderer.getView(id);
-      if (!nodeView) {
-        throw new Error("Aaaaah! no view available for " + id);
+      var nodeSurface = this.surfaces.getNodeSurface(id);
+      if (!nodeSurface) {
+        throw new Error("Aaaaah! no surface available for node " + id);
       }
-      var components = nodeView.getViewComponents();
+      var components = nodeSurface.components;
       if (!components) {
-        throw new Error("NodeView did not provide view components: " + nodeView.type);
+        throw new Error("Node Surface did not provide components: " + nodeSurface.node.type);
       }
       for (var j = 0; j < components.length; j++) {
         var component = components[j];
@@ -62,7 +64,7 @@ Container.Prototype = function() {
       this.rebuild();
     }
     return this.__components;
-  }
+  };
 
   this.lookup = function(path) {
     var components = this.getComponents();
@@ -102,7 +104,7 @@ Container.Prototype = function() {
 
   this.update = function(op) {
     var path = op.path;
-    var needRebuild = (path[0] === this.view.id ||  this.__composites[path[0]] !== undefined);
+    var needRebuild = (!this.__components || path[0] === this.view.id);
     if (needRebuild) this.rebuild();
   };
 
@@ -118,6 +120,12 @@ Container.Prototype = function() {
   this.getRootNodeFromPos = function(pos) {
     if (!this.__roots) this.rebuild();
     return this.document.get(this.__roots[pos]);
+  };
+
+  this.getNodePos = function(pos) {
+    if (!this.__roots) this.rebuild();
+    var id = this.__roots[pos];
+    return this.view.nodes.indexOf(id);
   };
 
   this.lookupRootNode = function(nodeId) {
@@ -142,6 +150,10 @@ Container.Prototype = function() {
   this.getComponent = function(pos) {
     var components = this.getComponents();
     return components[pos];
+  };
+
+  this.dispose = function() {
+    this.stopListening();
   };
 
   this.getTopLevelNodes = function() {

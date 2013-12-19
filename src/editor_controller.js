@@ -7,6 +7,7 @@ var Annotator = Document.Annotator;
 var Selection = Document.Selection;
 var Container = require("./container");
 var Operator = require("substance-operator");
+var NodeSurfaceProvider = require("./node_surface_provider");
 
 // A Controller that makes Nodes and a Document.Container editable
 // ========
@@ -31,9 +32,9 @@ var EditorController = function(document, editorFactory, options) {
   this.editorFactory = editorFactory;
   this.editors = {};
 
-  // HACK: Container depends on a renderer. You can provide a renderer via options.renderer
-  // or you can set the renderer afterwards. Then you have to call container.rebuild().
-  this.container = new Container(document, this.view, options.renderer);
+  this.nodeSurfaceProvider = new NodeSurfaceProvider(document);
+
+  this.container = new Container(document, this.view, this.nodeSurfaceProvider);
   this.selection = new Selection(this.container);
 
   // HACK: we will introduce a DocumentSession which is the combination
@@ -323,12 +324,14 @@ EditorController.Prototype = function() {
     if (this.selection.isNull()) {
       throw new Error("Selection is null!");
     }
+
     var session = this.startManipulation();
     var sel = session.selection;
 
     if (this.__breakNode(session)) {
       var cursorPos = sel.range().start;
-      var nodePos = cursorPos[0];
+      var nodePos = session.container.getNodePos(cursorPos[0]);
+
       // TODO: create a node with default values
       var newNode = {
         id: type + "_" +util.uuid(),
@@ -594,7 +597,8 @@ EditorController.Prototype = function() {
   this.startManipulation = function() {
     var doc = this.document.startSimulation();
     var annotator = new Annotator(doc, {withTransformation: true});
-    var container = new Container(doc, this.view, this.container.renderer);
+    var surfaceProvider = this.nodeSurfaceProvider.createCopy(doc);
+    var container = new Container(doc, this.view, surfaceProvider);
     var sel = new Selection(container, this.selection);
     return {
       document: doc,
@@ -602,12 +606,20 @@ EditorController.Prototype = function() {
       selection: sel,
       annotator: annotator,
       container: container,
-      save: function() { doc.save(); }
+      dispose: function() {
+        annotator.dispose();
+        container.dispose();
+      },
+      save: function() {
+        doc.save();
+        this.dispose();
+      }
     };
   };
 
   this.dispose = function() {
     this.annotator.dispose();
+    this.container.dispose();
   };
 
   this.isEditor = function() {

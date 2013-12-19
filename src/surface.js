@@ -16,7 +16,7 @@ var Surface = function(docCtrl, renderer) {
 
   // Pull out the registered nodetypes on the written article
   this.nodeTypes = docCtrl.document.nodeTypes;
-  this.nodes = this.renderer.nodes;
+  this.nodeViews = this.renderer.nodeViews;
 
   this.$el.addClass('surface');
 
@@ -77,8 +77,14 @@ Surface.Prototype = function() {
     // get the position from the container
     var component = container.lookup(elementPath);
 
+    // TODO rethink when it is a good time to attach the view to the node surface
+    if (!component.surface.hasView()) {
+      var view = this.nodeViews[component.node.id];
+      component.surface.attachView(view);
+    }
+
     nodePos = component.pos;
-    charPos = component.view.getCharPosition(el, offset);
+    charPos = component.surface.getCharPosition(el, offset);
 
     return [nodePos, charPos];
   };
@@ -142,7 +148,12 @@ Surface.Prototype = function() {
   var _mapModelCoordinates = function(pos) {
     var container = this.docCtrl.container;
     var component = container.getComponent(pos[0]);
-    var wCoor = component.view.getDOMPosition(pos[1]);
+    // TODO rethink when it is a good time to attach the view to the node surface
+    if (!component.surface.hasView()) {
+      var view = this.nodeViews[component.node.id];
+      component.surface.attachView(view);
+    }
+    var wCoor = component.surface.getDOMPosition(pos[1]);
     return wCoor;
   };
 
@@ -217,7 +228,7 @@ Surface.Prototype = function() {
   };
 
   this.reset = function() {
-    _.each(this.nodes, function(nodeView) {
+    _.each(this.nodeViews, function(nodeView) {
       nodeView.dispose();
     });
     this.render();
@@ -229,7 +240,7 @@ Surface.Prototype = function() {
 
   this.dispose = function() {
     this.stopListening();
-    _.each(this.nodes, function(n) {
+    _.each(this.nodeViews, function(n) {
       n.dispose();
     }, this);
   };
@@ -263,12 +274,12 @@ Surface.Prototype = function() {
     if (diff.isInsert()) {
       // Create a view and insert render it into the nodes container element.
       nodeId = diff.val;
-      node = this.docCtrl.get(nodeId);
+      node = this.docCtrl.document.get(nodeId);
       // TODO: this will hopefully be solved in a clean way
       // when we have done the 'renderer' refactorings
       if (this.nodeTypes[node.type]) {
         var nodeView = this.renderer.createView(node);
-        this.nodes[nodeId] = nodeView;
+        this.nodeViews[nodeId] = nodeView;
         el = nodeView.render().el;
         insertOrAppend(container, diff.pos, el);
       }
@@ -276,10 +287,10 @@ Surface.Prototype = function() {
     else if (diff.isDelete()) {
       // Dispose the view and remove its element from the nodes container
       nodeId = diff.val;
-      if (this.nodes[nodeId]) {
-        this.nodes[nodeId].dispose();
+      if (this.nodeViews[nodeId]) {
+        this.nodeViews[nodeId].dispose();
       }
-      delete this.nodes[nodeId];
+      delete this.nodeViews[nodeId];
       children = container.children;
       container.removeChild(children[diff.pos]);
     }
