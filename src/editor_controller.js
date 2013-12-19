@@ -57,8 +57,8 @@ EditorController.Prototype = function() {
 
   this.delete = function(direction) {
     var session = this.startManipulation();
-    // var doc = session.doc;
-    var sel = session.sel;
+    // var doc = session.document;
+    var sel = session.selection;
 
     console.log(sel);
 
@@ -112,7 +112,7 @@ EditorController.Prototype = function() {
 
     if (this.__breakNode(session)) {
       session.save();
-      this.selection.set(session.sel);
+      this.selection.set(session.selsection);
     }
   };
 
@@ -120,15 +120,44 @@ EditorController.Prototype = function() {
   // --------
   //
 
+  // FROM ANNOTATOR
+  // var _create = function(self, path, type, range, data) {
+  //   var annotation = {
+  //     "id": util.uuid(),
+  //     "type": type,
+  //     "path": path,
+  //     "range": range
+  //   };
+
+  //   if (data) _.extend(annotation, data);
+  //   return self.create(annotation);
+  // };
+
   this.annotate = function(type, data) {
-    var session = this.startManipulation();
-    // var newCursorPos = session.sel.range().start;
-    session.annotator.annotate(session.sel, type, data);
-    session.save();
-    // Note: it feels better when the selection is collapsed after setting the
-    // annotation style
-    // session.sel.collapse("right");
-    this.selection.set(session.sel);
+    if (this.selection.hasMultipleNodes()) {
+      throw new Error("Can only annotate within a single node/component.");
+    }
+
+    var session = this.session;
+
+    var selRange = this.selection.range();
+    var nodePos = selRange.start[0];
+    var range = [selRange.start[1], selRange.end[1]];
+
+    var node = session.container.getRootNodeFromPos(nodePos);
+    var component = session.container.getComponent(nodePos);
+    var editor = this.getEditor(node);
+
+    if (!editor.canAnnotate(session, component, type, range)) {
+      console.log("Can not annotate component", component);
+      return;
+    }
+    editor.annotate(session, component, type, range, data);
+
+    // Note: it feels better when the selection is collapsed after setting the annotation style
+    // session.selection.collapse("right");
+
+    this.selection.set(session.selection);
   };
 
   // Insert text at the current position
@@ -146,14 +175,14 @@ EditorController.Prototype = function() {
 
     if (this.__write(session, text)) {
       session.save();
-      this.selection.set(session.sel);
+      this.selection.set(session.selection);
     }
   };
 
   this.__write = function(session, text) {
-    var sel = session.sel;
+    var sel = session.selection;
 
-    var cursor = sel.getCursor()
+    var cursor = sel.getCursor();
     var nodePos = cursor.nodePos;
     var charPos = cursor.charPos;
 
@@ -203,9 +232,9 @@ EditorController.Prototype = function() {
     }
 
     var session = this.startManipulation();
-    var sel = session.sel;
+    var sel = session.selection;
 
-    var cursor = sel.getCursor()
+    var cursor = sel.getCursor();
     var nodePos = cursor.nodePos;
 
     var node = session.container.getRootNodeFromPos(nodePos);
@@ -230,7 +259,7 @@ EditorController.Prototype = function() {
     var session = this.startManipulation();
 
     if (this.__write(session, label)) {
-      var sel = session.sel;
+      var sel = session.selection;
       var cursor = sel.getCursor();
 
       sel.set({
@@ -244,7 +273,7 @@ EditorController.Prototype = function() {
       sel.collapse("right");
 
       session.save();
-      this.selection.set(session.sel);
+      this.selection.set(session.selection);
     }
   };
 
@@ -260,8 +289,7 @@ EditorController.Prototype = function() {
     }
 
     var session = this.startManipulation();
-    var sel = session.sel;
-    var nodePos = session.sel.start[0];
+    var nodePos = session.selection.start[0];
     var node = session.container.getRootNodeFromPos(nodePos);
     var editor = this.getEditor(node);
 
@@ -293,7 +321,7 @@ EditorController.Prototype = function() {
       throw new Error("Selection is null!");
     }
     var session = this.startManipulation();
-    var sel = session.sel;
+    var sel = session.selection;
 
     if (this.__breakNode(session)) {
       var cursorPos = sel.range().start;
@@ -306,8 +334,8 @@ EditorController.Prototype = function() {
       if (data) {
         _.extend(newNode, data);
       }
-      session.doc.create(newNode);
-      session.doc.show(session.view, newNode.id, nodePos);
+      session.document.create(newNode);
+      session.document.show(session.view, newNode.id, nodePos);
 
       session.save();
     }
@@ -334,7 +362,7 @@ EditorController.Prototype = function() {
   };
 
   this.__breakNode = function(session) {
-    var sel = session.sel;
+    var sel = session.selection;
     var cursorPos = sel.range().start;
     var nodePos = cursorPos[0];
     var charPos = cursorPos[1];
@@ -367,7 +395,7 @@ EditorController.Prototype = function() {
 
 
   this.__deleteSelection = function(session) {
-    var sel = session.sel;
+    var sel = session.selection;
 
     var success;
     if (sel.hasMultipleNodes()) {
@@ -386,7 +414,7 @@ EditorController.Prototype = function() {
   };
 
   this.__deleteSingle = function(session, component) {
-    var sel = session.sel;
+    var sel = session.selection;
     var node = component.node;
     var startChar = sel.startChar();
     var endChar = sel.endChar();
@@ -403,7 +431,7 @@ EditorController.Prototype = function() {
   };
 
   this.__deleteMulti = function(session) {
-    var ranges = session.sel.getRanges();
+    var ranges = session.selection.getRanges();
     var editors = [];
 
     var i, r;
@@ -438,7 +466,7 @@ EditorController.Prototype = function() {
         editors[i].deleteContent(session, r.component, r.start, r.end);
       } else {
         editors[i].deleteNode(session, r.node, r.nodePos);
-        session.doc.delete(r.node.id);
+        session.document.delete(r.node.id);
       }
     }
 
@@ -467,7 +495,7 @@ EditorController.Prototype = function() {
 
     nodeEditor.join(session, first, second);
     viewEditor.deleteNode(session, second, nodePos);
-    session.doc.delete(second.id);
+    session.document.delete(second.id);
 
     return true;
   };
@@ -501,7 +529,7 @@ EditorController.Prototype = function() {
 
     // var view = this.view;
     var doc = this.document;
-    var container = this.container;
+    // var container = this.container;
 
     function getUpdatedPostion(op) {
 
@@ -566,9 +594,9 @@ EditorController.Prototype = function() {
     var container = new Container(doc, this.view, this.container.renderer);
     var sel = new Selection(container, this.selection);
     return {
-      doc: doc,
+      document: doc,
       view: this.view,
-      sel: sel,
+      selection: sel,
       annotator: annotator,
       container: container,
       save: function() { doc.save(); }
@@ -582,6 +610,7 @@ EditorController.Prototype = function() {
   this.isEditor = function() {
     return true;
   };
+
 
 };
 
