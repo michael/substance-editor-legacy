@@ -142,9 +142,16 @@ EditorController.Prototype = function() {
       throw new Error("Can only annotate within a single node/component.");
     }
 
-    var session = this.session;
+    this.__annotate(this.session, type, data);
 
-    var selRange = this.selection.range();
+    // Note: it feels better when the selection is collapsed after setting the annotation style
+    // session.selection.collapse("right");
+
+    this.selection.set(this.session.selection);
+  };
+
+  this.__annotate = function(session, type, data) {
+    var selRange = session.selection.range();
     var pos = selRange.start[0];
     var range = [selRange.start[1], selRange.end[1]];
 
@@ -157,11 +164,6 @@ EditorController.Prototype = function() {
       return;
     }
     editor.annotate(session, component, type, range, data);
-
-    // Note: it feels better when the selection is collapsed after setting the annotation style
-    // session.selection.collapse("right");
-
-    this.selection.set(session.selection);
   };
 
   // Insert text at the current position
@@ -255,6 +257,7 @@ EditorController.Prototype = function() {
   };
 
   this.addReference = function(label, type, data) {
+
     if (this.selection.isNull()) {
       console.error("Nothing is selected.");
       return;
@@ -270,7 +273,7 @@ EditorController.Prototype = function() {
         start: [cursor.nodePos, cursor.charPos-label.length],
         end: [cursor.nodePos, cursor.charPos]
       });
-      session.annotator.annotate(sel, type, data);
+      this.__annotate(session, type, data);
 
       // Note: it feels better when the selection is collapsed after setting the
       // annotation style
@@ -373,7 +376,6 @@ EditorController.Prototype = function() {
     var sel = session.selection;
     var cursorPos = sel.range().start;
     var pos = cursorPos[0];
-    var nodePos = session.container.getNodePos(pos);
     var charPos = cursorPos[1];
 
     var component = session.container.getComponent(pos);
