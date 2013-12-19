@@ -134,6 +134,9 @@ EditorController.Prototype = function() {
   // };
 
   this.annotate = function(type, data) {
+    if (this.selection.isNull()) {
+      throw new Error("Nothing selected.");
+    }
     if (this.selection.hasMultipleNodes()) {
       throw new Error("Can only annotate within a single node/component.");
     }
@@ -501,7 +504,7 @@ EditorController.Prototype = function() {
   };
 
   this.getEditor = function(node) {
-    if (!this.editors[node.type]) {
+    if (!this.editors[node.id]) {
       this.editors[node.id] = this.editorFactory.createEditor(node);
     }
     return this.editors[node.id];
@@ -611,6 +614,9 @@ EditorController.Prototype = function() {
     return true;
   };
 
+  this.createComment = function(comment) {
+    this.document.comment(comment);
+  };
 
 };
 
