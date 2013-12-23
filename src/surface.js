@@ -139,7 +139,7 @@ Surface.Prototype = function() {
       if (!endPos) return;
     }
 
-    console.log("Surface.updateSelection()", startPos, endPos);
+    // console.log("Surface.updateSelection()", startPos, endPos);
     this.docCtrl.selection.set({start: startPos, end: endPos});
   };
 
