@@ -41,13 +41,15 @@ NodeSurfaceProvider.Prototype = function() {
     return this.nodeSurfaces[nodeId];
   };
 
+  // Creates a copy of this provider for a given document.
+  // --------
+  // This is as a named constructor for establishing a manipulation simulation session.
+  //
   this.createCopy = function(document) {
-    var copy = new NodeSurfaceProvider(document);
-    _.each(this.nodeSurfaces, function(s, k) {
-      copy.nodeSurfaces[k] = s;
-    });
-
-    return copy;
+    // Note: As this method is mainly used to implement document simulations,
+    //   we must not copy the node surface instances as they contain a reference
+    //   to the actual node.
+    return new NodeSurfaceProvider(document);
   };
 
 };

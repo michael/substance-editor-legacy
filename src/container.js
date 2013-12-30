@@ -18,6 +18,7 @@ var Container = function(document, name, surfaces) {
   this.view = container;
   this.__components = null;
   this.__roots = null;
+  this.__children = null;
 
   this.surfaces = surfaces;
   this.rebuild();
@@ -32,10 +33,13 @@ Container.Prototype = function() {
   this.rebuild = function() {
     var __components = [];
     var __roots = [];
+    var __children = {};
     var view = this.document.get(this.name);
 
     var rootNodes = view.nodes;
 
+    // TODO: we have a problem with doc-simulation here.
+    // Nodes are duplicated for simulation. Not so the references in the components.
     for (var i = 0; i < rootNodes.length; i++) {
       var id = rootNodes[i];
       var nodeSurface = this.surfaces.getNodeSurface(id);
@@ -46,16 +50,19 @@ Container.Prototype = function() {
       if (!components) {
         throw new Error("Node Surface did not provide components: " + nodeSurface.node.type);
       }
+      __children[id] = [];
       for (var j = 0; j < components.length; j++) {
-        var component = components[j];
+        var component = _.clone(components[j]);
         component.pos = __components.length;
         component.nodePos = i;
+        __children[id].push(component);
         __components.push(component);
         __roots.push(rootNodes[i]);
       }
     }
     this.__components = __components;
     this.__roots = __roots;
+    this.__children = __children;
     this.view = view;
   };
 
@@ -153,6 +160,14 @@ Container.Prototype = function() {
   this.getComponent = function(pos) {
     var components = this.getComponents();
     return components[pos];
+  };
+
+  this.getNodeComponents = function(node) {
+    var result = this.__children[node.id];
+    if (!result) {
+      throw new Error("Node is not in this container:"+node.id);
+    }
+    return result;
   };
 
   this.dispose = function() {

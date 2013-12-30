@@ -308,6 +308,7 @@ EditorController.Prototype = function() {
     session.save();
   };
 
+  // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
   this.canInsertNode = function() {
     var sel = this.selection;
     if (sel.isNull()) {
@@ -325,6 +326,7 @@ EditorController.Prototype = function() {
     return editor.canBreak(this.session, component, charPos);
   };
 
+  // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
   this.insertNode = function(type, data) {
     if (this.selection.isNull()) {
       throw new Error("Selection is null!");
@@ -439,56 +441,89 @@ EditorController.Prototype = function() {
     return true;
   };
 
+  // Note: with the new `component` concept we have to address this in a different way.
+  // I.e., a node might be represented by multiple components and not all of them are selected.
+  // If a node is fully selected then we can try to delete it from the view,
+  // otherwise the node must support partial deletion.
+  // TODO: try to stream-line this implementation.
   this.__deleteMulti = function(session) {
     var ranges = session.selection.getRanges();
-    var editors = [];
 
-    var i, r;
+    var i, r, node;
+    // collect information about deletions during the check
+    var cmds = [];
+    var viewEditor = this.getEditor({type: "view", id: this.view});
 
-    // Pre-check: can all deletions be applied?
-    // -> partial deletions for first and last
-    // -> full node deletion for inner nodes
-    var canDelete = true;
+    // Preparation: check that all deletions can be applied and
+    // prepare commands for an easy deletion
     for (i = 0; i < ranges.length; i++) {
       r = ranges[i];
+      node = r.component.node;
+      var canDelete;
+      var editor;
 
-      if (i === 0 || i === ranges.length-1) {
-        editors[i] = this.getEditor(r.node);
-        canDelete &= editors[i].canDeleteContent(session, r.component, r.start, r.end);
+      // Note: this checks if a node is fully selected via a simple heuristic:
+      // if the selection has enough components to cover the full node and the first and last components
+      // are fully selected, then the node is considered as fully selected.
+      var nodeComponents = this.container.getNodeComponents(r.component.node);
+      var firstIdx = i;
+      var lastIdx = firstIdx + nodeComponents.length - 1;
+      if (lastIdx < ranges.length && r.isFull() && ranges[lastIdx].isFull()) {
+        editor = viewEditor;
+        canDelete = editor.canDeleteNode(session, node, r.nodePos);
+        cmds.push({type: "node", editor: editor, range: r});
       } else {
-        // TODO: who is to decide if a top-level node can be deleted
-        // this should be the ViewEditor
-        editors[i] = this.getEditor({type: "view", id: this.view});
-        canDelete = editors[i].canDeleteNode(session, r.node, r.nodePos);
+        editor = this.getEditor(node);
+        for (var j=firstIdx; j<=lastIdx; j++) {
+          r = ranges[j];
+          canDelete = editor.canDeleteContent(session, r.component, r.start, r.end);
+          cmds.push({type: "content", editor: editor, range: r});
+        }
       }
 
+      i = lastIdx;
+
       if (!canDelete) {
-        console.log("Can't delete node:", r.node, r.nodePos);
+        console.log("Can't delete node:", node, r.nodePos);
         return false;
       }
     }
 
+    // If the first and the last selected node have been partially selected
+    // then we will try to join these nodes
+    var doJoin = (ranges.length > 0 && ranges[0].isPartial() && ranges[ranges.length-1].isPartial());
+
     // Perform the deletions
-    for (i = 0; i < ranges.length; i++) {
-      r = ranges[i];
-      if (i === 0 || i === ranges.length-1) {
-        editors[i].deleteContent(session, r.component, r.start, r.end);
+    // ........
+    // Note: we have to perform the deletions in inverse order
+    // so that the node positions remain valid
+    for (var i = cmds.length - 1; i >= 0; i--) {
+      var c = cmds[i];
+      r = c.range;
+
+      if (c.type === "content") {
+        c.editor.deleteContent(session, r.component, r.start, r.end);
       } else {
-        editors[i].deleteNode(session, r.node, r.nodePos);
-        session.document.delete(r.node.id);
+        node = r.component.node;
+        c.editor.deleteNode(session, node, r.nodePos);
+        // TODO: in theory it might be possible that nodes are referenced somewhere else
+        // however, we do not yet consider such situations and delete the node instantly
+        session.document.delete(node.id);
       }
     }
 
-    // TODO: Join the first with the last
-    this.__join(session, ranges[0], ranges[ranges.length-1]);
+    // Perform a join
+    if (doJoin) {
+      this.__join(session, ranges[0], ranges[ranges.length-1]);
+    }
 
     return true;
   };
 
   this.__join = function(session, r1, r2) {
 
-    var first = r1.node;
-    var second = r2.node;
+    var first = r1.component.node;
+    var second = r2.component.node;
     var nodePos = r1.nodePos + 1;
 
     var nodeEditor = this.getEditor(first);
