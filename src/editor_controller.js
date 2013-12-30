@@ -50,7 +50,7 @@ var EditorController = function(document, editorFactory, options) {
 
 EditorController.Prototype = function() {
 
-  _.extend(this, util.Events.Listener);
+  _.extend(this, util.Events);
 
   // Delete current selection
   // --------
@@ -72,6 +72,7 @@ EditorController.Prototype = function() {
     if (this.__deleteSelection(session)) {
       session.save();
       this.selection.set(sel);
+      this.trigger("document:edited");
     }
   };
 
@@ -114,25 +115,13 @@ EditorController.Prototype = function() {
     if (this.__breakNode(session)) {
       session.save();
       this.selection.set(session.selection);
+      this.trigger("document:edited");
     }
   };
 
   // Create an annotation of given type for the current selection
   // --------
   //
-
-  // FROM ANNOTATOR
-  // var _create = function(self, path, type, range, data) {
-  //   var annotation = {
-  //     "id": util.uuid(),
-  //     "type": type,
-  //     "path": path,
-  //     "range": range
-  //   };
-
-  //   if (data) _.extend(annotation, data);
-  //   return self.create(annotation);
-  // };
 
   this.annotate = function(type, data) {
     if (this.selection.isNull()) {
@@ -148,6 +137,8 @@ EditorController.Prototype = function() {
     // session.selection.collapse("right");
 
     this.selection.set(this.session.selection);
+
+    this.trigger("document:edited");
   };
 
   this.__annotate = function(session, type, data) {
@@ -182,6 +173,7 @@ EditorController.Prototype = function() {
     if (this.__write(session, text)) {
       session.save();
       this.selection.set(session.selection);
+      this.trigger("document:edited");
     }
   };
 
@@ -254,6 +246,7 @@ EditorController.Prototype = function() {
 
     editor.indent(session, component, direction);
     session.save();
+    this.trigger("document:edited");
   };
 
   this.addReference = function(label, type, data) {
@@ -281,6 +274,7 @@ EditorController.Prototype = function() {
 
       session.save();
       this.selection.set(session.selection);
+      this.trigger("document:edited");
     }
   };
 
@@ -306,6 +300,7 @@ EditorController.Prototype = function() {
 
     editor.changeType(session, node, pos, newType, data);
     session.save();
+    this.trigger("document:edited");
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
@@ -351,6 +346,7 @@ EditorController.Prototype = function() {
       session.document.show(session.view, newNode.id, nodePos);
 
       session.save();
+      this.trigger("document:edited");
     }
   };
 
