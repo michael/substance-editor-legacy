@@ -405,11 +405,10 @@ EditorController.Prototype = function() {
     }
 
     // Let the editor apply operations to break the node
-    editor.breakNode(session, component,charPos);
+    editor.breakNode(session, component, charPos);
 
     return true;
   };
-
 
   this.__deleteSelection = function(session) {
     var sel = session.selection;
@@ -564,83 +563,87 @@ EditorController.Prototype = function() {
   // EXPERIMENTAL
   // FIXME this is broken due to a cleanup during the Composite refactor
 
-  var _updateSelection = function(op) {
+  // var _updateSelection = function(op) {
 
-    // TODO: this needs a different approach.
-    // With compounds, the atomic operation do not directly represent a natural behaviour
-    // I.e., the last operation applied does not represent the position which is
-    // desired for updating the cursor
-    // Probably, we need to handle that behavior rather manually knowing
-    // about possible compound types...
-    // Maybe we could use the `alias` field of compound operations to leave helpful information...
-    // However, we post-pone this task as it is rather cosmetic
+  //   // TODO: this needs a different approach.
+  //   // With compounds, the atomic operation do not directly represent a natural behaviour
+  //   // I.e., the last operation applied does not represent the position which is
+  //   // desired for updating the cursor
+  //   // Probably, we need to handle that behavior rather manually knowing
+  //   // about possible compound types...
+  //   // Maybe we could use the `alias` field of compound operations to leave helpful information...
+  //   // However, we post-pone this task as it is rather cosmetic
 
-    if (!op) return;
+  //   if (!op) return;
 
-    // var view = this.view;
-    var doc = this.document;
-    // var container = this.container;
+  //   // var view = this.view;
+  //   var doc = this.document;
+  //   // var container = this.container;
 
-    function getUpdatedPostion(op) {
+  //   function getUpdatedPostion(op) {
 
-      // We need the last update which is relevant to positioning...
-      // 1. Update of the content of leaf nodes: ask node for an updated position
-      // 2. Update of a reference in a composite node:
-      // TODO: fixme. This does not work with deletions.
+  //     // We need the last update which is relevant to positioning...
+  //     // 1. Update of the content of leaf nodes: ask node for an updated position
+  //     // 2. Update of a reference in a composite node:
+  //     // TODO: fixme. This does not work with deletions.
 
-      // changes to views or containers are always updates or sets
-      // as they are properties
-      if (op.type !== "update" && op.type !== "set") return;
+  //     // changes to views or containers are always updates or sets
+  //     // as they are properties
+  //     if (op.type !== "update" && op.type !== "set") return;
 
-      // handle changes to the view of nodes
-      var node = doc.get(op.path[0]);
+  //     // handle changes to the view of nodes
+  //     var node = doc.get(op.path[0]);
 
-      if (!node) {
-        console.log("Hmmm... this.should not happen.");
-        return;
-      }
+  //     if (!node) {
+  //       console.log("Hmmm... this.should not happen.");
+  //       return;
+  //     }
 
-      var nodePos = -1;
-      var charPos = -1;
+  //     var nodePos = -1;
+  //     var charPos = -1;
 
-      // if (node.getChangePosition) {
-      //   nodePos = container.getPosition(node.id);
-      //   charPos = node.getChangePosition(op);
-      // }
+  //     // if (node.getChangePosition) {
+  //     //   nodePos = container.getPosition(node.id);
+  //     //   charPos = node.getChangePosition(op);
+  //     // }
 
-      if (nodePos >= 0 && charPos >= 0) {
-        return [nodePos, charPos];
-      }
-    }
+  //     if (nodePos >= 0 && charPos >= 0) {
+  //       return [nodePos, charPos];
+  //     }
+  //   }
 
-    // TODO: actually, this is not yet an appropriate approach to update the cursor position
-    // for compounds.
-    Operator.Helpers.each(op, function(_op) {
-      var pos = getUpdatedPostion(_op);
-      if (pos) {
-        this.selection.set(pos);
-        // breaking the iteration
-        return false;
-      }
-    }, this, "reverse");
+  //   // TODO: actually, this is not yet an appropriate approach to update the cursor position
+  //   // for compounds.
+  //   Operator.Helpers.each(op, function(_op) {
+  //     var pos = getUpdatedPostion(_op);
+  //     if (pos) {
+  //       this.selection.set(pos);
+  //       // breaking the iteration
+  //       return false;
+  //     }
+  //   }, this, "reverse");
 
-  };
+  // };
 
   this.undo = function() {
     if (!this.document.chronicle) return;
     var op = this.document.chronicle.rewind();
-    _updateSelection.call(this, op);
+    // TODO: FIXME
+    // _updateSelection.call(this, op);
   };
 
   this.redo = function() {
     if (!this.document.chronicle) return;
     var op = this.document.chronicle.forward();
-    _updateSelection.call(this, op);
+    // TODO: FIXME
+    // _updateSelection.call(this, op);
   };
 
+  // TODO: this is used *very* often and is implemented *very* naive.
+  // There's a great potential for optimization here
   this.startManipulation = function() {
     var doc = this.document.startSimulation();
-    var annotator = new Annotator(doc, {withTransformation: true});
+    var annotator = new Annotator(doc);
     var surfaceProvider = this.nodeSurfaceProvider.createCopy(doc);
     var container = new Container(doc, this.view, surfaceProvider);
     var sel = new Selection(container, this.selection);
@@ -651,7 +654,6 @@ EditorController.Prototype = function() {
       annotator: annotator,
       container: container,
       dispose: function() {
-        annotator.dispose();
         container.dispose();
       },
       save: function() {
@@ -662,7 +664,6 @@ EditorController.Prototype = function() {
   };
 
   this.dispose = function() {
-    this.annotator.dispose();
     this.container.dispose();
   };
 
