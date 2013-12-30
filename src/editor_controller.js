@@ -141,6 +141,16 @@ EditorController.Prototype = function() {
     this.trigger("document:edited");
   };
 
+  this.deleteNode = function(nodeId) {
+    this.document.delete(nodeId);
+    this.trigger("document:edited");
+  };
+
+  this.updateNode = function(nodeId, property, val) {
+    this.document.set([nodeId, property], val);
+    this.trigger("document:edited");
+  };
+
   this.__annotate = function(session, type, data) {
     var selRange = session.selection.range();
     var pos = selRange.start[0];
@@ -493,7 +503,7 @@ EditorController.Prototype = function() {
     // ........
     // Note: we have to perform the deletions in inverse order
     // so that the node positions remain valid
-    for (var i = cmds.length - 1; i >= 0; i--) {
+    for (i = cmds.length - 1; i >= 0; i--) {
       var c = cmds[i];
       r = c.range;
 
