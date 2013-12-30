@@ -30,13 +30,15 @@ var addEditingBehavior = function(surface, keyboard) {
     _dirtPossible = true;
   };
 
+  // TODO: document how that is actually working.
   var _onTextInput = function(e) {
     _dirtPossible = false;
     while (_dirt.length > 0) {
       var dirt = _dirt.shift();
       dirt[0].textContent = dirt[1];
     }
-    docCtrl.write(e.data);
+    // Note: it happens that text-input events have undefined data
+    if (e.data !== undefined) docCtrl.write(e.data);
     e.preventDefault();
   };
 
