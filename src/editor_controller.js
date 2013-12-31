@@ -61,8 +61,6 @@ EditorController.Prototype = function() {
     // var doc = session.document;
     var sel = session.selection;
 
-    console.log(sel);
-
     if (sel.isNull()) return;
 
     if (sel.isCollapsed()) {
