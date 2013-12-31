@@ -70,7 +70,7 @@ EditorController.Prototype = function() {
     if (this.__deleteSelection(session)) {
       session.save();
       this.selection.set(sel);
-      this.trigger("document:edited");
+      this.afterEdit();
     }
   };
 
@@ -113,7 +113,7 @@ EditorController.Prototype = function() {
     if (this.__breakNode(session)) {
       session.save();
       this.selection.set(session.selection);
-      this.trigger("document:edited");
+      this.afterEdit();
     }
   };
 
@@ -136,17 +136,17 @@ EditorController.Prototype = function() {
 
     this.selection.set(this.session.selection);
 
-    this.trigger("document:edited");
+    this.afterEdit();
   };
 
   this.deleteNode = function(nodeId) {
     this.document.delete(nodeId);
-    this.trigger("document:edited");
+    this.afterEdit();
   };
 
   this.updateNode = function(nodeId, property, val) {
     this.document.set([nodeId, property], val);
-    this.trigger("document:edited");
+    this.afterEdit();
   };
 
   this.__annotate = function(session, type, data) {
@@ -181,7 +181,7 @@ EditorController.Prototype = function() {
     if (this.__write(session, text)) {
       session.save();
       this.selection.set(session.selection);
-      this.trigger("document:edited");
+      this.afterEdit();
     }
   };
 
@@ -257,7 +257,7 @@ EditorController.Prototype = function() {
 
     editor.indent(session, component, direction);
     session.save();
-    this.trigger("document:edited");
+    this.afterEdit();
   };
 
   this.addReference = function(label, type, data) {
@@ -285,7 +285,7 @@ EditorController.Prototype = function() {
 
       session.save();
       this.selection.set(session.selection);
-      this.trigger("document:edited");
+      this.afterEdit();
     }
   };
 
@@ -311,7 +311,7 @@ EditorController.Prototype = function() {
 
     editor.changeType(session, node, pos, newType, data);
     session.save();
-    this.trigger("document:edited");
+    this.afterEdit();
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
@@ -357,7 +357,7 @@ EditorController.Prototype = function() {
       session.document.show(session.view, newNode.id, nodePos);
 
       session.save();
-      this.trigger("document:edited");
+      this.afterEdit();
     }
   };
 
@@ -379,6 +379,12 @@ EditorController.Prototype = function() {
     } else {
       return [];
     }
+  };
+
+  this.afterEdit = function() {
+    // setting a 'master' reference to the current state
+    this.document.chronicle.mark("master");
+    this.trigger("document:edited");
   };
 
   this.__breakNode = function(session) {
