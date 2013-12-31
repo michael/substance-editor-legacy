@@ -212,6 +212,9 @@ EditorController.Prototype = function() {
       }
     }
 
+    // Note: need to update the charPos as the deletion may have changed the cursor
+    charPos = sel.getCursor().charPos;
+
     // Ask for an operation and abort if no operation is given.
     editor.insertContent(session, component, charPos, text);
 
@@ -404,6 +407,9 @@ EditorController.Prototype = function() {
       }
     }
 
+    // Note: need to update the charPos as the deletion may have changed the cursor
+    charPos = sel.getCursor().charPos;
+
     // Let the editor apply operations to break the node
     editor.breakNode(session, component, charPos);
 
@@ -412,6 +418,10 @@ EditorController.Prototype = function() {
 
   this.__deleteSelection = function(session) {
     var sel = session.selection;
+
+    // after deleting the cursor shall be
+    // at the left bound of the selection
+    var newPos = sel.range().start;
 
     var success;
     if (sel.hasMultipleNodes()) {
@@ -422,9 +432,7 @@ EditorController.Prototype = function() {
       success = this.__deleteSingle(session, component);
     }
 
-    // in any case after deleting the cursor shall be
-    // at the left bound of the selection
-    sel.set(sel.range().start);
+    sel.set(newPos);
 
     return success;
   };
