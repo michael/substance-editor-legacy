@@ -191,7 +191,7 @@ EditorController.Prototype = function() {
     var sel = session.selection;
 
     var cursor = sel.getCursor();
-    var pos = cursor.nodePos;
+    var pos = cursor.pos;
     var charPos = cursor.charPos;
 
     var node = session.container.getRootNodeFromPos(pos);
@@ -246,7 +246,7 @@ EditorController.Prototype = function() {
     var sel = session.selection;
 
     var cursor = sel.getCursor();
-    var pos = cursor.nodePos;
+    var pos = cursor.pos;
 
     var node = session.container.getRootNodeFromPos(pos);
     var component = session.container.getComponent(pos);
@@ -276,8 +276,8 @@ EditorController.Prototype = function() {
       var cursor = sel.getCursor();
 
       sel.set({
-        start: [cursor.nodePos, cursor.charPos-label.length],
-        end: [cursor.nodePos, cursor.charPos]
+        start: [cursor.pos, cursor.charPos-label.length],
+        end: [cursor.pos, cursor.charPos]
       });
       this.__annotate(session, type, data);
 
@@ -483,7 +483,7 @@ EditorController.Prototype = function() {
       var lastIdx = firstIdx + nodeComponents.length - 1;
       if (lastIdx < ranges.length && r.isFull() && ranges[lastIdx].isFull()) {
         editor = viewEditor;
-        canDelete = editor.canDeleteNode(session, node, r.nodePos);
+        canDelete = editor.canDeleteNode(session, node, r.component.nodePos);
         cmds.push({type: "node", editor: editor, range: r});
       } else {
         editor = this.getEditor(node);
@@ -497,7 +497,7 @@ EditorController.Prototype = function() {
       i = lastIdx;
 
       if (!canDelete) {
-        console.log("Can't delete node:", node, r.nodePos);
+        console.log("Can't delete component:", r.component);
         return false;
       }
     }
@@ -518,7 +518,7 @@ EditorController.Prototype = function() {
         c.editor.deleteContent(session, r.component, r.start, r.end);
       } else {
         node = r.component.node;
-        c.editor.deleteNode(session, node, r.nodePos);
+        c.editor.deleteNode(session, node, r.component.nodePos);
         // TODO: in theory it might be possible that nodes are referenced somewhere else
         // however, we do not yet consider such situations and delete the node instantly
         session.document.delete(node.id);
@@ -537,7 +537,7 @@ EditorController.Prototype = function() {
 
     var first = r1.component.node;
     var second = r2.component.node;
-    var nodePos = r1.nodePos + 1;
+    var pos = r1.pos + 1;
 
     var nodeEditor = this.getEditor(first);
     var viewEditor = this.getEditor({type: "view", id: this.view});
@@ -546,12 +546,12 @@ EditorController.Prototype = function() {
       return false;
     }
 
-    if (!viewEditor.canDeleteNode(session, second, nodePos)) {
+    if (!viewEditor.canDeleteNode(session, second, r2.component.nodePos)) {
       return false;
     }
 
     nodeEditor.join(session, first, second);
-    viewEditor.deleteNode(session, second, nodePos);
+    viewEditor.deleteNode(session, second, r2.component.nodePos);
     session.document.delete(second.id);
 
     return true;

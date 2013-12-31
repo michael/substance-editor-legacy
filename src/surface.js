@@ -63,7 +63,7 @@ Surface.Prototype = function() {
   };
 
   var _mapDOMCoordinates = function(el, offset) {
-    var nodePos, charPos;
+    var pos, charPos;
 
     var container = this.docCtrl.container;
 
@@ -84,10 +84,10 @@ Surface.Prototype = function() {
       component.surface.attachView(view);
     }
 
-    nodePos = component.pos;
+    pos = component.pos;
     charPos = component.surface.getCharPosition(el, offset);
 
-    return [nodePos, charPos];
+    return [pos, charPos];
   };
 
   // Read out current DOM selection and update selection in the model
