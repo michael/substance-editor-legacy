@@ -13,15 +13,16 @@ var Surface = function(docCtrl, renderer) {
 
   this.docCtrl = docCtrl;
   this.renderer = renderer;
+  this.document = docCtrl.session.document;
 
   // Pull out the registered nodetypes on the written article
-  this.nodeTypes = docCtrl.document.nodeTypes;
+  this.nodeTypes = this.document.nodeTypes;
   this.nodeViews = this.renderer.nodeViews;
 
   this.$el.addClass('surface');
 
-  this.listenTo(this.docCtrl.document, "property:updated", this.onUpdateView);
-  this.listenTo(this.docCtrl.document, "graph:reset", this.reset);
+  this.listenTo(this.document, "property:updated", this.onUpdateView);
+  this.listenTo(this.document, "graph:reset", this.reset);
 
   if (docCtrl.isEditor()) {
     Surface.addEditingBehavior(this, new Keyboard(docCtrl));
@@ -277,7 +278,7 @@ Surface.Prototype = function() {
     if (diff.isInsert()) {
       // Create a view and insert render it into the nodes container element.
       nodeId = diff.val;
-      node = this.docCtrl.document.get(nodeId);
+      node = this.document.get(nodeId);
       // TODO: this will hopefully be solved in a clean way
       // when we have done the 'renderer' refactorings
       if (this.nodeTypes[node.type]) {

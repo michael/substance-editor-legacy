@@ -67,7 +67,7 @@ var addEditingBehavior = function(surface, keyboard) {
   // --------
 
   var _initialize = function() {
-    surface.listenTo(surface.docCtrl.selection,  "selection:changed", onSelectionChanged);
+    surface.listenTo(surface.docCtrl.session.selection,  "selection:changed", onSelectionChanged);
     el.addEventListener("keydown", _onKeyDown);
     el.addEventListener("textInput", _onTextInput, true);
     el.addEventListener("input", _onTextInput, true);

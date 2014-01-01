@@ -2,12 +2,6 @@
 
 var _ = require("underscore");
 var util = require("substance-util");
-var Document = require("substance-document");
-var Annotator = Document.Annotator;
-var Selection = Document.Selection;
-var Container = require("./container");
-var Operator = require("substance-operator");
-var NodeSurfaceProvider = require("./node_surface_provider");
 
 // A Controller that makes Nodes and a Document.Container editable
 // ========
@@ -23,29 +17,10 @@ var NodeSurfaceProvider = require("./node_surface_provider");
 // TODO: there is an ugliness now with the Container. Container is rather coupled to a Renderer.
 // Selections occur in the view domain and thus depend on the rendering.
 
-var EditorController = function(document, editorFactory, options) {
-  options = options || {};
-
-  this.document = document;
-  this.view = options.view || 'content';
-  this.annotator = new Annotator(document);
+var EditorController = function(documentSession, editorFactory) {
+  this.session = documentSession;
   this.editorFactory = editorFactory;
   this.editors = {};
-
-  this.nodeSurfaceProvider = new NodeSurfaceProvider(document);
-
-  this.container = new Container(document, this.view, this.nodeSurfaceProvider);
-  this.selection = new Selection(this.container);
-
-  // HACK: we will introduce a DocumentSession which is the combination
-  // of Document, Container, Selection and Annotator
-  this.session = {
-    "controller": this,
-    "document": this.document,
-    "selection": this.selection,
-    "container": this.container,
-    "annotator": this.annotator
-  };
 };
 
 EditorController.Prototype = function() {
@@ -57,7 +32,7 @@ EditorController.Prototype = function() {
   //
 
   this.delete = function(direction) {
-    var session = this.startManipulation();
+    var session = this.session.startSimulation();
     // var doc = session.document;
     var sel = session.selection;
 
@@ -67,10 +42,10 @@ EditorController.Prototype = function() {
       sel.expand(direction, "char");
     }
 
-    if (this.__deleteSelection(session)) {
+    if (_deleteSelection(this, session)) {
       session.save();
-      this.selection.set(sel);
-      this.afterEdit();
+      this.session.selection.set(sel);
+      _afterEdit(this);
     }
   };
 
@@ -104,16 +79,17 @@ EditorController.Prototype = function() {
   // executed when pressing RETURN within a node.
 
   this.breakNode = function() {
-    if (this.selection.isNull()) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
       console.error("Can not break, as no position has been selected.");
       return;
     }
-    var session = this.startManipulation();
+    var session = this.session.startSimulation();
 
-    if (this.__breakNode(session)) {
+    if (_breakNode(this, session)) {
       session.save();
-      this.selection.set(session.selection);
-      this.afterEdit();
+      selection.set(session.selection);
+      _afterEdit(this);
     }
   };
 
@@ -122,47 +98,27 @@ EditorController.Prototype = function() {
   //
 
   this.annotate = function(type, data) {
-    if (this.selection.isNull()) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
       throw new Error("Nothing selected.");
     }
-    if (this.selection.hasMultipleNodes()) {
+    if (selection.hasMultipleNodes()) {
       throw new Error("Can only annotate within a single node/component.");
     }
 
-    this.__annotate(this.session, type, data);
+    _annotate(this, this.session, type, data);
 
-    // Note: it feels better when the selection is collapsed after setting the annotation style
-    // session.selection.collapse("right");
-
-    this.selection.set(this.session.selection);
-
-    this.afterEdit();
+    _afterEdit(this);
   };
 
   this.deleteNode = function(nodeId) {
-    this.document.delete(nodeId);
-    this.afterEdit();
+    this.session.document.delete(nodeId);
+    _afterEdit(this);
   };
 
   this.updateNode = function(nodeId, property, val) {
-    this.document.set([nodeId, property], val);
-    this.afterEdit();
-  };
-
-  this.__annotate = function(session, type, data) {
-    var selRange = session.selection.range();
-    var pos = selRange.start[0];
-    var range = [selRange.start[1], selRange.end[1]];
-
-    var node = session.container.getRootNodeFromPos(pos);
-    var component = session.container.getComponent(pos);
-    var editor = this.getEditor(node);
-
-    if (!editor.canAnnotate(session, component, type, range)) {
-      console.log("Can not annotate component", component);
-      return;
-    }
-    editor.annotate(session, component, type, range, data);
+    this.session.document.set([nodeId, property], val);
+    _afterEdit(this);
   };
 
   // Insert text at the current position
@@ -171,55 +127,19 @@ EditorController.Prototype = function() {
   // TODO: we need support for textish properties, too.
 
   this.write = function(text) {
-    if (this.selection.isNull()) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
       console.error("Can not write, as no position has been selected.");
       return;
     }
 
-    var session = this.startManipulation();
+    var session = this.session.startSimulation();
 
-    if (this.__write(session, text)) {
+    if (_write(this, session, text)) {
       session.save();
-      this.selection.set(session.selection);
-      this.afterEdit();
+      selection.set(session.selection);
+      _afterEdit(this);
     }
-  };
-
-  this.__write = function(session, text) {
-    var sel = session.selection;
-
-    var cursor = sel.getCursor();
-    var pos = cursor.pos;
-    var charPos = cursor.charPos;
-
-    var node = session.container.getRootNodeFromPos(pos);
-    var component = session.container.getComponent(pos);
-    var editor = this.getEditor(node);
-
-    if (!editor.canInsertContent(session, component, charPos)) {
-      console.log("Can not insert at the given position.");
-      return false;
-    }
-
-    // if the selection is expanded then delete first
-    // Note: this.__deleteSelection collapses the session cursor.
-    if (!sel.isCollapsed()) {
-      if (!this.__deleteSelection(session)) {
-        console.log("Could not delete the selected content");
-        return false;
-      }
-    }
-
-    // Note: need to update the charPos as the deletion may have changed the cursor
-    charPos = sel.getCursor().charPos;
-
-    // Ask for an operation and abort if no operation is given.
-    editor.insertContent(session, component, charPos, text);
-
-    // update the cursor
-    sel.set([pos, charPos + text.length]);
-
-    return true;
   };
 
   // Behaviors triggered by using `tab` and `shift+tab`.
@@ -230,17 +150,18 @@ EditorController.Prototype = function() {
   // Arguments:
   ///  - `direction`: `right` or `left` (default: `right`)
   this.indent = function(direction) {
-    if (this.selection.isNull()) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
       console.error("Nothing is selected.");
       return;
     }
 
-    if (this.selection.hasMultipleNodes()) {
+    if (selection.hasMultipleNodes()) {
       console.error("Indenting Multi-Node selection is not supported yet.");
       return;
     }
 
-    var session = this.startManipulation();
+    var session = this.session.startSimulation();
     var sel = session.selection;
 
     var cursor = sel.getCursor();
@@ -248,7 +169,7 @@ EditorController.Prototype = function() {
 
     var node = session.container.getRootNodeFromPos(pos);
     var component = session.container.getComponent(pos);
-    var editor = this.getEditor(node);
+    var editor = _getEditor(this, node);
 
     if (!editor.canIndent(session, component, direction)) {
       console.log("Can not indent at the given position.");
@@ -257,19 +178,19 @@ EditorController.Prototype = function() {
 
     editor.indent(session, component, direction);
     session.save();
-    this.afterEdit();
+    _afterEdit(this);
   };
 
   this.addReference = function(label, type, data) {
-
-    if (this.selection.isNull()) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
       console.error("Nothing is selected.");
       return;
     }
 
-    var session = this.startManipulation();
+    var session = this.session.startSimulation();
 
-    if (this.__write(session, label)) {
+    if (_write(this, session, label)) {
       var sel = session.selection;
       var cursor = sel.getCursor();
 
@@ -277,33 +198,35 @@ EditorController.Prototype = function() {
         start: [cursor.pos, cursor.charPos-label.length],
         end: [cursor.pos, cursor.charPos]
       });
-      this.__annotate(session, type, data);
+      _annotate(this, session, type, data);
 
       // Note: it feels better when the selection is collapsed after setting the
       // annotation style
       sel.collapse("right");
 
       session.save();
-      this.selection.set(session.selection);
-      this.afterEdit();
+      selection.set(session.selection);
+      _afterEdit(this);
     }
   };
 
   this.changeType = function(newType, data) {
+    var selection = this.session.selection;
+
     console.log("EditorController.changeType()", newType, data);
-    if (this.selection.isNull()) {
+    if (selection.isNull()) {
       console.error("Nothing selected.");
       return;
     }
-    if (this.selection.hasMultipleNodes()) {
+    if (selection.hasMultipleNodes()) {
       console.error("Can not switch type of multiple nodes.");
       return;
     }
 
-    var session = this.startManipulation();
+    var session = this.session.startSimulation();
     var pos = session.selection.start[0];
     var node = session.container.getRootNodeFromPos(pos);
-    var editor = this.getEditor(node);
+    var editor = _getEditor(this, node);
 
     if (!editor.canChangeType(session, node, newType)) {
       return;
@@ -311,34 +234,37 @@ EditorController.Prototype = function() {
 
     editor.changeType(session, node, pos, newType, data);
     session.save();
-    this.afterEdit();
+    _afterEdit(this);
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
   this.canInsertNode = function() {
-    var sel = this.selection;
-    if (sel.isNull()) {
+    var selection = this.session.selection;
+    var container = this.session.container;
+
+    if (selection.isNull()) {
       return false;
     }
 
-    var cursorPos = sel.range().start;
+    var cursorPos = selection.range().start;
     var pos = cursorPos[0];
     var charPos = cursorPos[1];
 
-    var component = this.container.getComponent(pos);
+    var component = container.getComponent(pos);
     var node = component.node;
+    var editor = _getEditor(this, node);
 
-    var editor = this.getEditor(node);
     return editor.canBreak(this.session, component, charPos);
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
   this.insertNode = function(type, data) {
-    if (this.selection.isNull()) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
       throw new Error("Selection is null!");
     }
 
-    var session = this.startManipulation();
+    var session = this.session.startSimulation();
     var sel = session.selection;
 
     if (this.__breakNode(session)) {
@@ -357,12 +283,12 @@ EditorController.Prototype = function() {
       session.document.show(session.view, newNode.id, nodePos);
 
       session.save();
-      this.afterEdit();
+      _afterEdit(this);
     }
   };
 
   // HACK: this should be created dynamically...
-  var allowedActions = [
+  var _allowedActions = [
     {
       action: "create",
       type: "heading",
@@ -371,23 +297,108 @@ EditorController.Prototype = function() {
       }
     }
   ];
-  util.freeze(allowedActions);
+  util.freeze(_allowedActions);
 
   this.getAllowedActions = function() {
     if (this.canInsertNode()) {
-      return allowedActions;
+      return _allowedActions;
     } else {
       return [];
     }
   };
 
-  this.afterEdit = function() {
-    // setting a 'master' reference to the current state
-    this.document.chronicle.mark("master");
-    this.trigger("document:edited");
+  this.undo = function() {
+    if (!this.session.document.chronicle) return;
+    this.session.document.chronicle.rewind();
   };
 
-  this.__breakNode = function(session) {
+  this.redo = function() {
+    if (!this.session.document.chronicle) return;
+    this.session.document.chronicle.forward();
+  };
+
+  this.dispose = function() {
+    this.session.dispose();
+  };
+
+  this.isEditor = function() {
+    return true;
+  };
+
+  this.createComment = function(comment) {
+    this.session.document.comment(comment);
+  };
+
+  // Private functions
+  // ........
+
+  var _annotate = function(self, session, type, data) {
+    var selRange = session.selection.range();
+    var pos = selRange.start[0];
+    var range = [selRange.start[1], selRange.end[1]];
+
+    var node = session.container.getRootNodeFromPos(pos);
+    var component = session.container.getComponent(pos);
+    var editor = _getEditor(self, node);
+
+    if (!editor.canAnnotate(session, component, type, range)) {
+      console.log("Can not annotate component", component);
+      return;
+    }
+    editor.annotate(session, component, type, range, data);
+  };
+
+  var _afterEdit = function(self) {
+    // setting a 'master' reference to the current state
+    self.session.document.chronicle.mark("master");
+    self.trigger("document:edited");
+  };
+
+  var _getEditor = function(self, node) {
+    if (!self.editors[node.id]) {
+      self.editors[node.id] = self.editorFactory.createEditor(node);
+    }
+    return self.editors[node.id];
+  };
+
+  var _write = function(self, session, text) {
+    var sel = session.selection;
+
+    var cursor = sel.getCursor();
+    var pos = cursor.pos;
+    var charPos = cursor.charPos;
+
+    var node = session.container.getRootNodeFromPos(pos);
+    var component = session.container.getComponent(pos);
+    var editor = _getEditor(self, node);
+
+    if (!editor.canInsertContent(session, component, charPos)) {
+      console.log("Can not insert at the given position.");
+      return false;
+    }
+
+    // if the selection is expanded then delete first
+    // Note: this.__deleteSelection collapses the session cursor.
+    if (!sel.isCollapsed()) {
+      if (!_deleteSelection(self, session)) {
+        console.log("Could not delete the selected content");
+        return false;
+      }
+    }
+
+    // Note: need to update the charPos as the deletion may have changed the cursor
+    charPos = sel.getCursor().charPos;
+
+    // Ask for an operation and abort if no operation is given.
+    editor.insertContent(session, component, charPos, text);
+
+    // update the cursor
+    sel.set([pos, charPos + text.length]);
+
+    return true;
+  };
+
+  var _breakNode = function(self, session) {
     var sel = session.selection;
     var cursorPos = sel.range().start;
     var pos = cursorPos[0];
@@ -397,7 +408,7 @@ EditorController.Prototype = function() {
     var node = session.container.getRootNodeFromPos(pos);
 
     // Get the editor and ask for permission to break the node at the given position
-    var editor = this.getEditor(node);
+    var editor = _getEditor(self, node);
     if (!editor.canBreak(session, component, charPos)) {
       return false;
     }
@@ -405,7 +416,7 @@ EditorController.Prototype = function() {
     // if the selection is expanded then delete first
     // Note: this.__deleteSelection collapses the session cursor.
     if (!sel.isCollapsed()) {
-      if (!this.__deleteSelection(session)) {
+      if (!_deleteSelection(self, session)) {
         console.log("Could not delete the selected content");
         return false;
       }
@@ -420,7 +431,7 @@ EditorController.Prototype = function() {
     return true;
   };
 
-  this.__deleteSelection = function(session) {
+  var _deleteSelection = function(self, session) {
     var sel = session.selection;
 
     // after deleting the cursor shall be
@@ -429,11 +440,11 @@ EditorController.Prototype = function() {
 
     var success;
     if (sel.hasMultipleNodes()) {
-      success = this.__deleteMulti(session);
+      success = _deleteMulti(self, session);
     } else {
       var pos = sel.start[0];
       var component = session.container.getComponent(pos);
-      success = this.__deleteSingle(session, component);
+      success = _deleteSingle(self, session, component);
     }
 
     sel.set(newPos);
@@ -441,12 +452,12 @@ EditorController.Prototype = function() {
     return success;
   };
 
-  this.__deleteSingle = function(session, component) {
+  var _deleteSingle = function(self, session, component) {
     var sel = session.selection;
     var node = component.node;
     var startChar = sel.startChar();
     var endChar = sel.endChar();
-    var editor = this.getEditor(node);
+    var editor = _getEditor(self, node);
 
     // Check if the editor allows to delete
     if (!editor.canDeleteContent(session, component, startChar, endChar)) {
@@ -463,13 +474,14 @@ EditorController.Prototype = function() {
   // If a node is fully selected then we can try to delete it from the view,
   // otherwise the node must support partial deletion.
   // TODO: try to stream-line this implementation.
-  this.__deleteMulti = function(session) {
+  var _deleteMulti = function(self, session) {
     var ranges = session.selection.getRanges();
+    var container = session.container;
 
     var i, r, node;
     // collect information about deletions during the check
     var cmds = [];
-    var viewEditor = this.getEditor({type: "view", id: this.view});
+    var viewEditor = _getEditor(self, {type: "view", id: container.name});
 
     // Preparation: check that all deletions can be applied and
     // prepare commands for an easy deletion
@@ -482,7 +494,7 @@ EditorController.Prototype = function() {
       // Note: this checks if a node is fully selected via a simple heuristic:
       // if the selection has enough components to cover the full node and the first and last components
       // are fully selected, then the node is considered as fully selected.
-      var nodeComponents = this.container.getNodeComponents(r.component.node);
+      var nodeComponents = container.getNodeComponents(r.component.node);
       var firstIdx = i;
       var lastIdx = firstIdx + nodeComponents.length - 1;
       if (lastIdx < ranges.length && r.isFull() && ranges[lastIdx].isFull()) {
@@ -490,7 +502,7 @@ EditorController.Prototype = function() {
         canDelete = editor.canDeleteNode(session, node, r.component.nodePos);
         cmds.push({type: "node", editor: editor, range: r});
       } else {
-        editor = this.getEditor(node);
+        editor = _getEditor(self, node);
         for (var j=firstIdx; j<=lastIdx; j++) {
           r = ranges[j];
           canDelete = editor.canDeleteContent(session, r.component, r.start, r.end);
@@ -531,20 +543,20 @@ EditorController.Prototype = function() {
 
     // Perform a join
     if (doJoin) {
-      this.__join(session, ranges[0], ranges[ranges.length-1]);
+      _join(self, session, ranges[0], ranges[ranges.length-1]);
     }
 
     return true;
   };
 
-  this.__join = function(session, r1, r2) {
+  var _join = function(self, session, r1, r2) {
 
     var first = r1.component.node;
     var second = r2.component.node;
-    var pos = r1.pos + 1;
+    // var pos = r1.pos + 1;
 
-    var nodeEditor = this.getEditor(first);
-    var viewEditor = this.getEditor({type: "view", id: this.view});
+    var nodeEditor = _getEditor(self, first);
+    var viewEditor = _getEditor(self, {type: "view", id: session.container.name});
 
     if (!nodeEditor.canJoin(session, first, second)) {
       return false;
@@ -561,134 +573,54 @@ EditorController.Prototype = function() {
     return true;
   };
 
-  this.getEditor = function(node) {
-    if (!this.editors[node.id]) {
-      this.editors[node.id] = this.editorFactory.createEditor(node);
-    }
-    return this.editors[node.id];
-  };
-
-  // Updates the selection considering a given operation
-  // -------
-  // This is used to set the selection when applying operations that are not triggered by the user interface,
-  // e.g., when rolling back or forth with the Chronicle.
-  // EXPERIMENTAL
-  // FIXME this is broken due to a cleanup during the Composite refactor
-
-  // var _updateSelection = function(op) {
-
-  //   // TODO: this needs a different approach.
-  //   // With compounds, the atomic operation do not directly represent a natural behaviour
-  //   // I.e., the last operation applied does not represent the position which is
-  //   // desired for updating the cursor
-  //   // Probably, we need to handle that behavior rather manually knowing
-  //   // about possible compound types...
-  //   // Maybe we could use the `alias` field of compound operations to leave helpful information...
-  //   // However, we post-pone this task as it is rather cosmetic
-
-  //   if (!op) return;
-
-  //   // var view = this.view;
-  //   var doc = this.document;
-  //   // var container = this.container;
-
-  //   function getUpdatedPostion(op) {
-
-  //     // We need the last update which is relevant to positioning...
-  //     // 1. Update of the content of leaf nodes: ask node for an updated position
-  //     // 2. Update of a reference in a composite node:
-  //     // TODO: fixme. This does not work with deletions.
-
-  //     // changes to views or containers are always updates or sets
-  //     // as they are properties
-  //     if (op.type !== "update" && op.type !== "set") return;
-
-  //     // handle changes to the view of nodes
-  //     var node = doc.get(op.path[0]);
-
-  //     if (!node) {
-  //       console.log("Hmmm... this.should not happen.");
-  //       return;
-  //     }
-
-  //     var nodePos = -1;
-  //     var charPos = -1;
-
-  //     // if (node.getChangePosition) {
-  //     //   nodePos = container.getPosition(node.id);
-  //     //   charPos = node.getChangePosition(op);
-  //     // }
-
-  //     if (nodePos >= 0 && charPos >= 0) {
-  //       return [nodePos, charPos];
-  //     }
-  //   }
-
-  //   // TODO: actually, this is not yet an appropriate approach to update the cursor position
-  //   // for compounds.
-  //   Operator.Helpers.each(op, function(_op) {
-  //     var pos = getUpdatedPostion(_op);
-  //     if (pos) {
-  //       this.selection.set(pos);
-  //       // breaking the iteration
-  //       return false;
-  //     }
-  //   }, this, "reverse");
-
-  // };
-
-  this.undo = function() {
-    if (!this.document.chronicle) return;
-    var op = this.document.chronicle.rewind();
-    // TODO: FIXME
-    // _updateSelection.call(this, op);
-  };
-
-  this.redo = function() {
-    if (!this.document.chronicle) return;
-    var op = this.document.chronicle.forward();
-    // TODO: FIXME
-    // _updateSelection.call(this, op);
-  };
-
-  // TODO: this is used *very* often and is implemented *very* naive.
-  // There's a great potential for optimization here
-  this.startManipulation = function() {
-    var doc = this.document.startSimulation();
-    var annotator = new Annotator(doc);
-    var surfaceProvider = this.nodeSurfaceProvider.createCopy(doc);
-    var container = new Container(doc, this.view, surfaceProvider);
-    var sel = new Selection(container, this.selection);
-    return {
-      document: doc,
-      view: this.view,
-      selection: sel,
-      annotator: annotator,
-      container: container,
-      dispose: function() {
-        container.dispose();
-      },
-      save: function() {
-        doc.save();
-        this.dispose();
-      }
-    };
-  };
-
-  this.dispose = function() {
-    this.container.dispose();
-  };
-
-  this.isEditor = function() {
-    return true;
-  };
-
-  this.createComment = function(comment) {
-    this.document.comment(comment);
-  };
-
 };
 
 EditorController.prototype = new EditorController.Prototype();
+
+Object.defineProperties(EditorController.prototype, {
+  "selection": {
+    get: function() {
+      return this.session.selection;
+    },
+    set: function() {
+      throw new Error("Immutable.");
+    }
+  },
+  "annotator": {
+    get: function() {
+      return this.session.annotator;
+    },
+    set: function() {
+      throw new Error("Immutable.");
+    }
+  },
+  "container": {
+    get: function() {
+      return this.session.container;
+    },
+    set: function() {
+      throw new Error("Immutable.");
+    }
+  },
+  "document": {
+    get: function() {
+      return this.session.document;
+    },
+    set: function() {
+      throw new Error("Immutable.");
+    }
+  },
+  "view": {
+    get: function() {
+      // TODO: 'view' is not very accurate as it is actually the name of a view node
+      // Beyond that 'view' as a node type is also confusing considering the Views.
+      console.error("TODO: rename this property.")
+      return this.session.container.name;
+    },
+    set: function() {
+      throw new Error("Immutable.");
+    }
+  }
+});
 
 module.exports = EditorController;
