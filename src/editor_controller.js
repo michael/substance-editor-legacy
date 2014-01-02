@@ -494,7 +494,7 @@ EditorController.Prototype = function() {
       // Note: this checks if a node is fully selected via a simple heuristic:
       // if the selection has enough components to cover the full node and the first and last components
       // are fully selected, then the node is considered as fully selected.
-      var nodeComponents = container.getNodeComponents(r.component.node);
+      var nodeComponents = container.getNodeComponents(node.id);
       var firstIdx = i;
       var lastIdx = firstIdx + nodeComponents.length - 1;
       if (lastIdx < ranges.length && r.isFull() && ranges[lastIdx].isFull()) {
