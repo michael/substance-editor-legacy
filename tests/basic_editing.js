@@ -6,7 +6,7 @@
 var Test = require('substance-test');
 var assert = Test.assert;
 var registerTest = Test.registerTest;
-var SurfaceTest = require('./surface_test');
+// var SurfaceTest = require('./surface_test');
 
 
 // Test
@@ -24,14 +24,14 @@ var P4 = "Heavy boxes perform quick waltzes and jigs";
 // TODO: Rewrite. Surface tests must be more surface oriented.
 
 var BasicEditing = function() {
-  SurfaceTest.call(this);
+  // SurfaceTest.call(this);
 
   // Deactivate the default fixture for testing basic behavior
   this.fixture = function() {};
 
   this.actions = [
 
-    function() {
+    "Not implemented", function() {
       assert.fail("Not implemented.");
     }
 
@@ -307,6 +307,6 @@ var BasicEditing = function() {
   ];
 };
 
-BasicEditing.prototype = SurfaceTest.prototype;
+// BasicEditing.prototype = SurfaceTest.prototype;
 
 registerTest(['Substance.Surface', 'Basic Editing'], new BasicEditing());
