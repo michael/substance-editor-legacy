@@ -303,7 +303,7 @@ EditorController.Prototype = function() {
   // HACK: this should be created dynamically...
   var _allowedActions = [
     {
-      action: "create",
+      action: "createNode",
       type: "heading",
       data: {
         level: 1
