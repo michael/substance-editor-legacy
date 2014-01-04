@@ -111,9 +111,22 @@ EditorController.Prototype = function() {
     _afterEdit(this);
   };
 
-  this.deleteNode = function(nodeId) {
-    this.session.document.delete(nodeId);
-    _afterEdit(this);
+  // This deactivates an annotation
+  // ----
+  // To allow easy toggling back we will set the selection
+  // to the annotated range afterwards.
+  this.deleteAnnotation = function(nodeId) {
+    var doc = this.session.document;
+    var annotation = doc.get(nodeId);
+
+    var component = this.session.container.lookup(annotation.path);
+
+    doc.delete(nodeId);
+
+    this.session.selection.set({
+      start: [component.pos, annotation.range[0]],
+      end:   [component.pos, annotation.range[1]]
+    });
   };
 
   this.updateNode = function(nodeId, property, val) {
@@ -346,6 +359,8 @@ EditorController.Prototype = function() {
       return;
     }
     editor.annotate(session, component, type, range, data);
+
+    session.selection.set(selRange);
   };
 
   var _afterEdit = function(self) {
@@ -614,7 +629,7 @@ Object.defineProperties(EditorController.prototype, {
     get: function() {
       // TODO: 'view' is not very accurate as it is actually the name of a view node
       // Beyond that 'view' as a node type is also confusing considering the Views.
-      console.error("TODO: rename this property.")
+      console.error("TODO: rename this property.");
       return this.session.container.name;
     },
     set: function() {
