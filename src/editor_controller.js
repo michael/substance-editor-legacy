@@ -280,7 +280,7 @@ EditorController.Prototype = function() {
     var session = this.session.startSimulation();
     var sel = session.selection;
 
-    if (this.__breakNode(session)) {
+    if (_breakNode(this, session)) {
       var cursorPos = sel.range().start;
       var nodePos = session.container.getNodePos(cursorPos[0]);
 
