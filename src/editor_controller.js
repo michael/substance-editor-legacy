@@ -106,7 +106,25 @@ EditorController.Prototype = function() {
       throw new Error("Can only annotate within a single node/component.");
     }
 
-    _annotate(this, this.session, type, data);
+    var session = this.session.startSimulation();
+
+    // TODO: where would be define default values?
+    if (type === "link") {
+      data.url = "http://example.com";
+    }
+
+    // TODO: how could this be generalized
+    else if (type === "remark_reference" || type === "error_reference") {
+      data = data || {};
+      var issueId = _issue(this, session, type);
+      data.target = issueId;
+    }
+
+    _annotate(this, session, type, data);
+
+    session.save();
+
+    this.session.selection.set(session.selection);
 
     _afterEdit(this);
   };
@@ -588,6 +606,32 @@ EditorController.Prototype = function() {
     return true;
   };
 
+  // TODO: this should be done via the node classes
+  var _issueType = {
+    "error_reference": "error",
+    "remark_reference": "remark"
+  };
+  var _issueContainer = {
+    "error": "errors",
+    "remark": "remarks"
+  };
+  var _issue = function(self, session, annoType) {
+    var type = _issueType[annoType];
+    var container = _issueContainer[type];
+
+    if (!type) {
+      throw new Error("Unsupported issue type:" + annoType);
+    }
+
+    var doc = session.document;
+    var issue = {
+      id: type+"_" + util.uuid(),
+      type: type
+    };
+    doc.create(issue);
+    doc.show(container, [issue.id]);
+    return issue.id;
+  };
 };
 
 EditorController.prototype = new EditorController.Prototype();
