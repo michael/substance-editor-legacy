@@ -270,7 +270,7 @@ Surface.Prototype = function() {
   }
 
   this.onUpdateView = function(path, diff) {
-    if (path.length !== 2 || path[0] !== this.docCtrl.view || path[1] !== "nodes") return;
+    if (path.length !== 2 || path[0] !== this.docCtrl.session.container.name || path[1] !== "nodes") return;
 
     var nodeId, node;
     var container = this._nodesEl;
