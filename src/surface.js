@@ -40,6 +40,13 @@ Surface.Prototype = function() {
     var current = el;
     while(current !== undefined) {
 
+      // if available extract a path fragment
+      if (current.getAttribute) {
+        // if there is a path attibute we collect it
+        var p = current.getAttribute("data-path");
+        if (p) path.unshift(p);
+      }
+
       // node-views
       if ($(current).is(".content-node")) {
         var id = current.getAttribute("id");
@@ -50,11 +57,6 @@ Surface.Prototype = function() {
 
         // STOP here
         return path;
-      }
-      else if (current.getAttribute) {
-        // if there is a path attibute we collect it
-        var p = current.getAttribute("data-path");
-        if (p) path.unshift(p);
       }
 
       current = current.parentElement;
