@@ -626,7 +626,10 @@ EditorController.Prototype = function() {
     var doc = session.document;
     var issue = {
       id: type+"_" + util.uuid(),
-      type: type
+      type: type,
+      created_at: new Date(),
+      // TODO: Use full username from operating system
+      creator: Math.random()>0.5 ? "Michael Aufreiter" : "Oliver Buchtala"
     };
     doc.create(issue);
     doc.show(container, [issue.id]);
