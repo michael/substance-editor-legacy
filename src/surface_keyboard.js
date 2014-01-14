@@ -94,7 +94,7 @@ var SurfaceKeyboard = function(editor) {
     }), "keydown");
 
     keyboard.bind(["ctrl+h"], surface.manipulate(function() {
-      editor.changeType("heading", {"level": 1});
+      editor.insertNode("heading", {"level": 1});
     }), "keydown");
 
     keyboard.connect(surface.el);
