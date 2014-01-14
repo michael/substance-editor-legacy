@@ -1,3 +1,4 @@
+var Clipboard = require("./clipboard");
 
 // Makes a Surface editable
 // --------
@@ -6,13 +7,14 @@
 
 var addEditingBehavior = function(surface, keyboard) {
 
-  var self = this;
   var el = surface.el;
   var $el = surface.$el;
   var docCtrl = surface.docCtrl;
 
   el.setAttribute("contenteditable", "true");
   el.spellcheck = false;
+
+  surface.clipboard = new Clipboard(el);
 
   // Support for Multi-Char inputs
   // --------
@@ -31,8 +33,12 @@ var addEditingBehavior = function(surface, keyboard) {
   };
 
   // TODO: document how that is actually working.
+  // Tis is triggered on textinput events of the contenteditable.
+  // There are some peculiarities with that event type
+  // - whitespaces do not trigger
   var _onTextInput = function(e) {
     _dirtPossible = false;
+    console.log("Surface.Editing._onTextInput", e.data, _dirt);
     while (_dirt.length > 0) {
       var dirt = _dirt.shift();
       dirt[0].textContent = dirt[1];

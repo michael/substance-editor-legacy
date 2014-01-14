@@ -44,6 +44,8 @@ var SurfaceKeyboard = function(editor) {
       editor.write("\n");
     }), "keydown");
 
+    // HACK: we have to overload the native whitespace input as it triggers
+    // a scroll under MacOSX
     keyboard.bind(["space", "shift+space"], surface.manipulate(function() {
       editor.write(" ");
     }), "keydown");
@@ -72,13 +74,13 @@ var SurfaceKeyboard = function(editor) {
       editor.annotate("emphasis");
     }), "keydown");
 
-    keyboard.bind(["ctrl+c"], surface.manipulate(function() {
-      editor.copy();
-    }), "keydown");
+    // keyboard.bind(["ctrl+c"], surface.manipulate(function() {
+    //   editor.copy();
+    // }), "keydown");
 
-    keyboard.bind(["ctrl+v"], surface.manipulate(function() {
-      editor.paste();
-    }), "keydown");
+    // keyboard.bind(["ctrl+v"], surface.manipulate(function() {
+    //   editor.paste();
+    // }), "keydown");
 
     // EXPERIMENTAL hooks for creating new node and annotation types
 
