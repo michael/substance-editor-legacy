@@ -313,7 +313,17 @@ EditorController.Prototype = function() {
       session.document.create(newNode);
       session.document.show(session.view, newNode.id, nodePos);
 
+      //EXPERIMENTAL: Set the cursor into the node
+      // TODO: evaluate if it is a good approach to set the cursor into
+      // the first component at position 0.
+      var components = session.container.getNodeComponents(newNode.id);
+      if (components.length > 0) {
+        sel.set([components[0].pos, 0]);
+      }
+
       session.save();
+      this.session.selection.set(session.selection);
+
       _afterEdit(this);
     }
   };
