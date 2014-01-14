@@ -16,7 +16,8 @@ var SurfaceKeyboard = function(editor) {
         "ctrl+shift+up", "ctrl+shift+down", "ctrl+shift+left", "ctrl+shift+right",
         "alt+up", "alt+down", "alt+left", "alt+right",
         "alt+shift+up", "alt+shift+down", "alt+shift+left", "alt+shift+right",
-        "command+up", "command+down", "command+left", "command+right"
+        "command+up", "command+down", "command+left", "command+right",
+        "command+shift+up", "command+shift+down", "command+shift+left", "command+shift+right"
     ], function() {
       surface.onCursorMoved();
     }, "keydown");
