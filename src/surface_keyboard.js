@@ -106,6 +106,10 @@ var SurfaceKeyboard = function(editor) {
   this.disconnect = function() {
     keyboard.disconnect();
   };
+
+  this.bind = function(keys, handler, eType) {
+    keyboard.bind(keys, handler, eType);
+  };
 };
 
 module.exports = SurfaceKeyboard;

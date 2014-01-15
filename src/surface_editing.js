@@ -1,4 +1,4 @@
-var Clipboard = require("./clipboard");
+"use strict";
 
 // Makes a Surface editable
 // --------
@@ -9,81 +9,180 @@ var addEditingBehavior = function(surface, keyboard) {
 
   var el = surface.el;
   var $el = surface.$el;
-  var docCtrl = surface.docCtrl;
+  var editorCtrl = surface.docCtrl;
 
   el.setAttribute("contenteditable", "true");
   el.spellcheck = false;
 
-  surface.clipboard = new Clipboard(el);
 
   // Support for Multi-Char inputs
   // --------
 
-  var _dirt = [];
-  var _dirtPossible = false;
-  var _ignoreNextSelection = false;
+  // this array will be filled by the mutation observer
+  // with tuples {el, val} which represent the old state
+  // before the DOM mutation.
+  // In some cases, e.g. multi-chars, the DOM gets manipulated several times
+  // but only the last time a textinput event is triggered.
+  // Before applying delivering the textinput to the editor controller
+  // we reset the content of the element.
+  // Otherwise the editing change would be applied to the DOM a second time.
+  var _domChanges = [];
+  var _recordMutations = false;
+
+  // We ignore selection updates whenever the selection was triggered by the UI
+  // For example, when moving the cursor, the selection gets updated by the contenteditable,
+  // so it is not necessary to update it again.
+  // NOTE: this is optimization and prevents that the model overrules the selection,
+  // e.g., if a certain position is not valid w.r.t. to model coordinates.
+  // In many cases however, the window selection is resetted unnecessarily.
+
+  // NOTE: I disabled this as it seems premature optimization.
+  // TODO: We should find a different way to optimize this. E.g. it could be possible
+  // to store the last mapped model coordinates. When the update returns we could check
+  // if the model coordinates are still the same.
+  // var _ignoreNextSelection = false;
 
   var _onMouseup = function(e) {
-    _ignoreNextSelection = true;
+    // _ignoreNextSelection = true;
     surface.updateSelection(e);
   };
 
   var _onKeyDown = function() {
-    _dirtPossible = true;
+    // TODO: we should enable this mechanism more specifically
+    // I.e. by adding keycodes for possible multi-char keys
+    _recordMutations = true;
   };
 
-  // TODO: document how that is actually working.
-  // Tis is triggered on textinput events of the contenteditable.
-  // There are some peculiarities with that event type
-  // - whitespaces do not trigger
+
+  // The textinput event is fired after typing and pasting.
+  // This approach is rather questionable, as there are browser incompatibilities.
+  // The benefit of it is an easier way to interpret keyevents.
+
+  // used to deactivate the textinput handler which gets triggered with empty data
+  var isPasting = false;
+
   var _onTextInput = function(e) {
-    _dirtPossible = false;
-    console.log("Surface.Editing._onTextInput", e.data, _dirt);
-    while (_dirt.length > 0) {
-      var dirt = _dirt.shift();
-      dirt[0].textContent = dirt[1];
+    console.log("Surface.Editing._onTextInput", e.data, _domChanges);
+
+    // Ignore textinput events that occur during pasting
+    if (isPasting) {
+      return;
     }
-    // Note: it happens that text-input events have undefined data
-    if (e.data !== undefined) docCtrl.write(e.data);
-    e.preventDefault();
+
+    if (_recordMutations && _domChanges.length > 0) {
+      var change = _domChanges[0];
+      change.el.textContent = change.val;
+    }
+    _recordMutations = false;
+
+    if (!e.data) {
+      console.error("It happened that the textinput event had no data. Investigate!");
+    } else {
+      editorCtrl.write(e.data);
+      e.preventDefault();
+    }
   };
 
   var _mutationObserver = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
-      if (_dirtPossible) {
-        _dirt.push([mutation.target, mutation.oldValue]);
+      // console.log("MutationObserver:", mutation.target, mutation.oldValue);
+      if (_recordMutations) {
+        _domChanges.push({mutation: mutation, el: mutation.target, val: mutation.oldValue});
       }
     });
   });
   // configuration of the observer:
   var _mutationObserverConfig = { subtree: true, characterData: true, characterDataOldValue: true };
 
-  // Hack to avoid circular updates of the selection
+  // Updates the window selection whenever the model selection changes
   // --------
-
+  // TODO: we should think about how this could be optimized.
+  // ATM, a window selection change, e.g., when moving the cursor,
+  // triggers a model selection update, which in turn triggers a window selection update.
+  // The latter would not be necessary in most cases.
   var onSelectionChanged = function() {
-    if (_ignoreNextSelection === true) {
-      _ignoreNextSelection = false;
-      return;
-    }
+    // if (_ignoreNextSelection === true) {
+    //   _ignoreNextSelection = false;
+    //   return;
+    // }
     return surface.renderSelection.apply(surface, arguments);
   };
 
-  // Initialization
-  // --------
+  // EXPERIMENTAL Copy and Paste
+  // -----
 
-  var _initialize = function() {
-    surface.listenTo(surface.docCtrl.session.selection,  "selection:changed", onSelectionChanged);
-    el.addEventListener("keydown", _onKeyDown);
-    el.addEventListener("textInput", _onTextInput, true);
-    el.addEventListener("input", _onTextInput, true);
-    $el.mouseup(_onMouseup);
-    _mutationObserver.observe(el, _mutationObserverConfig);
-    keyboard.connect(surface);
+  var _before;
+  keyboard.bind(["ctrl+v"], function() {
+    console.log("Pasting...");
+    var wSel = window.getSelection();
+    var wRange = wSel.getRangeAt(0);
+    // NOTE: unfortunateĺy the textnode that is provided
+    // here does not exist at the end of the pasting.
+    var parentEl = wRange.startContainer.parentElement;
+    var childIndex = Array.prototype.indexOf.call(parentEl.childNodes, wRange.startContainer);
+    _before = {
+      parentEl: parentEl,
+      childIndex: childIndex,
+      el: null,
+      offset: wRange.startOffset
+    };
+  }, "keypress");
+
+  el.onpaste = function(e) {
+    console.log("Surface.Editing::onpaste", e);
+    isPasting = true;
+    _recordMutations = false;
+
+    // Note: as things are even more difficult
+    // we need to schedule the paste processing
+    // after this call so that the contenteditable can
+    // add the content
+    window.setTimeout(function() {
+      console.log("Post processing paste.");
+      isPasting = false;
+      var wRange;
+
+      // Prepare a caret before the pasted content.
+      // Note: contenteditable kills the node which came in with the initial DOM selection.
+      // So the only way to get the correct instance is via child index.
+      _before.el = _before.parentEl.childNodes[_before.childIndex];
+
+      // Retrieve the position after the pasted content.
+      var wSel = window.getSelection();
+      wRange = wSel.getRangeAt(0);
+      var _after = {
+        el: wRange.startContainer,
+        offset: wRange.startOffset
+      };
+
+      // _before and _after describe a range that can be used
+      // to extract content
+      wRange = document.createRange();
+      wRange.setStart(_before.el, _before.offset);
+      wRange.setEnd(_after.el, _after.offset);
+      var text = wRange.toString();
+
+      // finally deliver the content to the editor
+      // TODO: we could even do more things here, such parsing the enclosed fragment
+      // and e.g., generate annotations
+      console.log("... pasted content:", text, _before, _after);
+      editorCtrl.write(text);
+    }, 0);
   };
 
-  // Override the dispose method
+  keyboard.bind(["ctrl+c"], function() {
+    console.log("Copying...");
+  }, "keydown");
+
+  // Note: we could do something with this...?
+  // el.oncopy = function(e) {
+  // };
+
+
+  // Override the dispose method to bind extra disposing stuff
   // --------
+  // TODO: we should really consider to make this an independet class instead of a mix-in
+  // and let the surface call the dispose explicitely
 
   var __dispose__ = surface.dispose;
   surface.dispose = function() {
@@ -104,24 +203,35 @@ var addEditingBehavior = function(surface, keyboard) {
   surface.onCursorMoved = function() {
     // call this after the movement has been done by the contenteditable
     setTimeout(function() {
-      _ignoreNextSelection = true;
+      // _ignoreNextSelection = true;
       surface.updateSelection();
     }, 0);
   };
 
   // HACK: up to now this is the only way I figured out to recognize if an observed DOM manipulation
   // originated from a Substance.Document update or from an multi-char input.
-  // In the latter case we eliminate
-  surface.manipulate = function(f) {
+  surface.manipulate = function(f, propagate) {
     return function(e) {
-      _dirtPossible = false;
+      _recordMutations = false;
       setTimeout(f, 0);
-      e.preventDefault();
+      if(!propagate) e.preventDefault();
     };
+  };
+
+  // Initialization
+  // --------
+
+  var _initialize = function() {
+    surface.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
+    el.addEventListener("keydown", _onKeyDown);
+    el.addEventListener("textInput", _onTextInput, true);
+    el.addEventListener("input", _onTextInput, true);
+    $el.mouseup(_onMouseup);
+    _mutationObserver.observe(el, _mutationObserverConfig);
+    keyboard.connect(surface);
   };
 
   _initialize();
 };
 
 module.exports = addEditingBehavior;
-
