@@ -112,7 +112,7 @@ var addEditingBehavior = function(surface, keyboard) {
   // -----
 
   var _before;
-  keyboard.bind(["command+v"], function() {
+  keyboard.bind("paste", function() {
     console.log("Pasting...");
     var wSel = window.getSelection();
     var wRange = wSel.getRangeAt(0);
@@ -170,7 +170,7 @@ var addEditingBehavior = function(surface, keyboard) {
     }, 0);
   };
 
-  keyboard.bind(["command+c"], function() {
+  keyboard.bind("copy", function() {
     console.log("Copying...");
   }, "keydown");
 

@@ -1,24 +1,18 @@
 var Commander = require("substance-commander");
 
 // TODO: make this configurable.
-var SurfaceKeyboard = function(editor) {
+var SurfaceKeyboard = function(editor, keymap) {
   var keyboard = new Commander.Mousetrap();
+
+  this.keymap = keymap;
 
   // Connects this keyboard to a Surface
   // --------
   // Note: the argument `surface` is a Surface.Editing instance
 
   this.connect = function(surface) {
-    keyboard.bind([
-        "up", "down", "left", "right",
-        "shift+up", "shift+down", "shift+left", "shift+right",
-        "ctrl+up", "ctrl+down", "ctrl+left", "ctrl+right",
-        "ctrl+shift+up", "ctrl+shift+down", "ctrl+shift+left", "ctrl+shift+right",
-        "alt+up", "alt+down", "alt+left", "alt+right",
-        "alt+shift+up", "alt+shift+down", "alt+shift+left", "alt+shift+right",
-        "command+up", "command+down", "command+left", "command+right",
-        "command+shift+up", "command+shift+down", "command+shift+left", "command+shift+right"
-    ], function() {
+
+    keyboard.bind(keymap["selection"], function() {
       surface.onCursorMoved();
     }, "keydown");
 
@@ -28,75 +22,53 @@ var SurfaceKeyboard = function(editor) {
     // to recognize native key events for that complex chars...
     // However, for now that dirt... we can this streamline in future - for sure...
 
-    keyboard.bind(["backspace"], surface.manipulate(function() {
+    keyboard.bind(keymap["backspace"], surface.manipulate(function() {
       editor.delete("left");
     }), "keydown");
 
-    keyboard.bind(["del"], surface.manipulate(function() {
+    keyboard.bind(keymap["delete"], surface.manipulate(function() {
       editor.delete("right");
     }), "keydown");
 
-    keyboard.bind(["enter"], surface.manipulate(function() {
+    keyboard.bind(keymap["break"], surface.manipulate(function() {
       editor.breakNode();
     }), "keydown");
 
-    keyboard.bind(["shift+enter"], surface.manipulate(function() {
+    keyboard.bind(keymap["soft-break"], surface.manipulate(function() {
       editor.write("\n");
     }), "keydown");
 
-    // HACK: we have to overload the native whitespace input as it triggers
-    // a scroll under MacOSX
-    keyboard.bind(["space", "shift+space"], surface.manipulate(function() {
+    keyboard.bind(keymap["blank"], surface.manipulate(function() {
       editor.write(" ");
     }), "keydown");
 
-    keyboard.bind(["tab"], surface.manipulate(function() {
+    keyboard.bind(keymap["indent"], surface.manipulate(function() {
       editor.indent("right");
     }), "keydown");
 
-    keyboard.bind(["shift+tab"], surface.manipulate(function() {
+    keyboard.bind(keymap["unindent"], surface.manipulate(function() {
       editor.indent("left");
     }), "keydown");
 
-    keyboard.bind(["command+z"], surface.manipulate(function() {
+    keyboard.bind(keymap["undo"], surface.manipulate(function() {
       editor.undo();
     }), "keydown");
 
-    keyboard.bind(["command+shift+z"], surface.manipulate(function() {
+    keyboard.bind(keymap["redo"], surface.manipulate(function() {
       editor.redo();
     }), "keydown");
 
-    keyboard.bind(["ctrl+b"], surface.manipulate(function() {
+    keyboard.bind(keymap["strong"], surface.manipulate(function() {
       editor.annotate("strong");
     }), "keydown");
 
-    keyboard.bind(["ctrl+i"], surface.manipulate(function() {
+    keyboard.bind(keymap["emphasis"], surface.manipulate(function() {
       editor.annotate("emphasis");
     }), "keydown");
 
-    // keyboard.bind(["ctrl+c"], surface.manipulate(function() {
-    //   editor.copy();
-    // }), "keydown");
-
-    // keyboard.bind(["ctrl+v"], surface.manipulate(function() {
-    //   editor.paste();
-    // }), "keydown");
-
     // EXPERIMENTAL hooks for creating new node and annotation types
 
-    keyboard.bind(["ctrl+shift+c"], surface.manipulate(function() {
-      editor.annotate("issue");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+shift+m"], surface.manipulate(function() {
-      editor.annotate("math");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+t"], surface.manipulate(function() {
-      editor.changeType("text");
-    }), "keydown");
-
-    keyboard.bind(["ctrl+command+h"], surface.manipulate(function() {
+    keyboard.bind(keymap["heading"], surface.manipulate(function() {
       editor.insertNode("heading", {"level": 1});
     }), "keydown");
 

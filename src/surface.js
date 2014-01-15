@@ -8,8 +8,10 @@ var Keyboard = require("./surface_keyboard");
 // Substance.Surface
 // ==========================================================================
 
-var Surface = function(docCtrl, renderer) {
+var Surface = function(docCtrl, renderer, options) {
   View.call(this);
+
+  var options = options || {};
 
   this.docCtrl = docCtrl;
   this.renderer = renderer;
@@ -25,7 +27,8 @@ var Surface = function(docCtrl, renderer) {
   this.listenTo(this.document, "graph:reset", this.reset);
 
   if (docCtrl.isEditor()) {
-    Surface.addEditingBehavior(this, new Keyboard(docCtrl));
+    var keymap = options.keymap || Surface._getDefaultKeyMap();
+    Surface.addEditingBehavior(this, new Keyboard(docCtrl, keymap));
   }
 };
 
@@ -317,5 +320,20 @@ _.extend(Surface.Prototype, util.Events.Listener);
 
 Surface.Prototype.prototype = View.prototype;
 Surface.prototype = new Surface.Prototype();
+
+Surface._getDefaultKeyMap = function() {
+  var keymap = require("./default_keymap_osx");
+  if (global.navigator !== undefined) {
+    var platform = global.navigator.platform;
+    if (platform.toLowerCase().search("linux") >= 0) {
+      keymap = require("./default_keymap_unix");
+    }
+    else if (platform.toLowerCase().search("win32") >= 0) {
+      // currently we use the same keymap for linux and win
+      keymap = require("./default_keymap_unix");
+    }
+  }
+  return keymap;
+};
 
 module.exports = Surface;
