@@ -58,11 +58,11 @@ var SurfaceKeyboard = function(editor) {
       editor.indent("left");
     }), "keydown");
 
-    keyboard.bind(["ctrl+z"], surface.manipulate(function() {
+    keyboard.bind(["command+z"], surface.manipulate(function() {
       editor.undo();
     }), "keydown");
 
-    keyboard.bind(["ctrl+shift+z"], surface.manipulate(function() {
+    keyboard.bind(["command+shift+z"], surface.manipulate(function() {
       editor.redo();
     }), "keydown");
 
