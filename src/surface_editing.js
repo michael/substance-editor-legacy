@@ -62,7 +62,7 @@ var addEditingBehavior = function(surface, keyboard) {
   var isPasting = false;
 
   var _onTextInput = function(e) {
-    console.log("Surface.Editing._onTextInput", e.data, _domChanges);
+    // console.log("Surface.Editing._onTextInput", e.data, _domChanges);
 
     // Ignore textinput events that occur during pasting
     if (isPasting) {
@@ -113,7 +113,7 @@ var addEditingBehavior = function(surface, keyboard) {
 
   var _before;
   keyboard.bind("paste", function() {
-    console.log("Pasting...");
+    // console.log("Pasting...");
     var wSel = window.getSelection();
     var wRange = wSel.getRangeAt(0);
     // NOTE: unfortunateĺy the textnode that is provided
@@ -129,7 +129,7 @@ var addEditingBehavior = function(surface, keyboard) {
   }, "keypress");
 
   el.onpaste = function(e) {
-    console.log("Surface.Editing::onpaste", e);
+    // console.log("Surface.Editing::onpaste", e);
     isPasting = true;
     _recordMutations = false;
 
@@ -138,7 +138,7 @@ var addEditingBehavior = function(surface, keyboard) {
     // after this call so that the contenteditable can
     // add the content
     window.setTimeout(function() {
-      console.log("Post processing paste.");
+      // console.log("Post processing paste.");
       isPasting = false;
       var wRange;
 
@@ -165,13 +165,13 @@ var addEditingBehavior = function(surface, keyboard) {
       // finally deliver the content to the editor
       // TODO: we could even do more things here, such parsing the enclosed fragment
       // and e.g., generate annotations
-      console.log("... pasted content:", text, _before, _after);
+      // console.log("... pasted content:", text, _before, _after);
       editorCtrl.write(text);
     }, 0);
   };
 
   keyboard.bind("copy", function() {
-    console.log("Copying...");
+    // console.log("Copying...");
   }, "keydown");
 
   // Note: we could do something with this...?
