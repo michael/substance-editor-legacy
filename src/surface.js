@@ -11,7 +11,7 @@ var Keyboard = require("./surface_keyboard");
 var Surface = function(docCtrl, renderer, options) {
   View.call(this);
 
-  var options = options || {};
+  options = options || {};
 
   this.docCtrl = docCtrl;
   this.renderer = renderer;
@@ -134,15 +134,26 @@ Surface.Prototype = function() {
       wEndPos = tmp;
     }
 
+    // Note: we clear the selection whenever we can not map the window selelection
+    // can not be mapped to model coordinates.
+
     var startPos = _mapDOMCoordinates.call(this, wStartPos[0], wStartPos[1]);
-    if (!startPos) return;
+    if (!startPos) {
+      wSel.removeAllRanges();
+      this.docCtrl.selection.clear();
+      return;
+    }
 
     var endPos;
     if (wRange.collapsed) {
       endPos = startPos;
     } else {
       endPos = _mapDOMCoordinates.call(this, wEndPos[0], wEndPos[1]);
-      if (!endPos) return;
+      if (!endPos) {
+        wSel.removeAllRanges();
+        this.docCtrl.selection.clear();
+        return;
+      }
     }
 
     // console.log("Surface.updateSelection()", startPos, endPos);
@@ -169,7 +180,9 @@ Surface.Prototype = function() {
   this.renderSelection = function() {
     var sel = this.docCtrl.selection;
 
-    var wSel = window.getSelection();
+    if (sel.isNull()) {
+      return;
+    }
 
     var wRange = document.createRange();
 
@@ -177,6 +190,7 @@ Surface.Prototype = function() {
     wRange.setStart(wStartPos.startContainer, wStartPos.startOffset);
 
     // TODO: is there a better way to manipulate the current selection?
+    var wSel = window.getSelection();
     wSel.removeAllRanges();
     wSel.addRange(wRange);
 
