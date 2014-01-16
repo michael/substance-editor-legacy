@@ -79,8 +79,8 @@ var SurfaceKeyboard = function(editor, keymap) {
     keyboard.disconnect();
   };
 
-  this.bind = function(keys, handler, eType) {
-    keyboard.bind(keys, handler, eType);
+  this.bind = function(cmd, handler, eType) {
+    keyboard.bind(keymap[cmd], handler, eType);
   };
 };
 
