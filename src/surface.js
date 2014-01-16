@@ -170,20 +170,22 @@ Surface.Prototype = function() {
     var sel = this.docCtrl.selection;
 
     var wSel = window.getSelection();
-    var range = sel.range();
 
     var wRange = document.createRange();
 
-    var wStartPos = _mapModelCoordinates.call(this, range.start);
+    var wStartPos = _mapModelCoordinates.call(this, sel.start);
     wRange.setStart(wStartPos.startContainer, wStartPos.startOffset);
 
-    if (!sel.isCollapsed()) {
-      var wEndPos = _mapModelCoordinates.call(this, range.end);
-      wRange.setEnd(wEndPos.endContainer, wEndPos.endOffset);
-    }
-
+    // TODO: is there a better way to manipulate the current selection?
     wSel.removeAllRanges();
     wSel.addRange(wRange);
+
+    // Move the caret to the end position
+    // Note: this is the only way to get reversed selections.
+    if (!sel.isCollapsed()) {
+      var wEndPos = _mapModelCoordinates.call(this, [sel.cursor.pos, sel.cursor.charPos]);
+      wSel.extend(wEndPos.endContainer, wEndPos.endOffset);
+    }
   };
 
   // Render it
