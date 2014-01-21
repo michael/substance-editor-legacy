@@ -13,6 +13,7 @@ var Surface = function(docCtrl, renderer, options) {
 
   options = options || {};
 
+  // Rename docCtrl to surfaceCtrl ?
   this.docCtrl = docCtrl;
   this.renderer = renderer;
   this.document = docCtrl.session.document;
