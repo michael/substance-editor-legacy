@@ -45,6 +45,7 @@ var keymap = {
   // Content
   // --------
   "heading": ["ctrl+command+h"],
+  "figref": ["ctrl+command+f"],
 };
 
 module.exports = keymap;
