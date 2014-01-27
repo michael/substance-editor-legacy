@@ -108,76 +108,13 @@ var addEditingBehavior = function(surface, keyboard) {
     return surface.renderSelection.apply(surface, arguments);
   };
 
-  // EXPERIMENTAL Copy and Paste
-  // -----
+  // HACK: even if we do not implement copy'n'paste here, we need to disable
+  // the DOM Mutation observer stuff temporarily
 
-  var _before;
-  keyboard.bind("paste", function() {
-    // console.log("Pasting...");
-    var wSel = window.getSelection();
-    var wRange = wSel.getRangeAt(0);
-    // NOTE: unfortunateĺy the textnode that is provided
-    // here does not exist at the end of the pasting.
-    var parentEl = wRange.startContainer.parentElement;
-    var childIndex = Array.prototype.indexOf.call(parentEl.childNodes, wRange.startContainer);
-    _before = {
-      parentEl: parentEl,
-      childIndex: childIndex,
-      el: null,
-      offset: wRange.startOffset
-    };
-  }, "keypress");
-
-  el.onpaste = function(e) {
-    // console.log("Surface.Editing::onpaste", e);
+  keyboard.bind("paste", function(e) {
     isPasting = true;
     _recordMutations = false;
-
-    // Note: as things are even more difficult
-    // we need to schedule the paste processing
-    // after this call so that the contenteditable can
-    // add the content
-    window.setTimeout(function() {
-      // console.log("Post processing paste.");
-      isPasting = false;
-      var wRange;
-
-      // Prepare a caret before the pasted content.
-      // Note: contenteditable kills the node which came in with the initial DOM selection.
-      // So the only way to get the correct instance is via child index.
-      _before.el = _before.parentEl.childNodes[_before.childIndex];
-
-      // Retrieve the position after the pasted content.
-      var wSel = window.getSelection();
-      wRange = wSel.getRangeAt(0);
-      var _after = {
-        el: wRange.startContainer,
-        offset: wRange.startOffset
-      };
-
-      // _before and _after describe a range that can be used
-      // to extract content
-      wRange = document.createRange();
-      wRange.setStart(_before.el, _before.offset);
-      wRange.setEnd(_after.el, _after.offset);
-      var text = wRange.toString();
-
-      // finally deliver the content to the editor
-      // TODO: we could even do more things here, such parsing the enclosed fragment
-      // and e.g., generate annotations
-      // console.log("... pasted content:", text, _before, _after);
-      editorCtrl.write(text);
-    }, 0);
-  };
-
-  keyboard.bind("copy", function() {
-    // console.log("Copying...");
-  }, "keydown");
-
-  // Note: we could do something with this...?
-  // el.oncopy = function(e) {
-  // };
-
+  }, "keypress");
 
   // Override the dispose method to bind extra disposing stuff
   // --------
