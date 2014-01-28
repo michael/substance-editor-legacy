@@ -58,16 +58,8 @@ var addEditingBehavior = function(surface, keyboard) {
   // This approach is rather questionable, as there are browser incompatibilities.
   // The benefit of it is an easier way to interpret keyevents.
 
-  // used to deactivate the textinput handler which gets triggered with empty data
-  var isPasting = false;
-
   var _onTextInput = function(e) {
     // console.log("Surface.Editing._onTextInput", e.data, _domChanges);
-
-    // Ignore textinput events that occur during pasting
-    if (isPasting) {
-      return;
-    }
 
     if (_recordMutations && _domChanges.length > 0) {
       var change = _domChanges[0];
@@ -110,9 +102,7 @@ var addEditingBehavior = function(surface, keyboard) {
 
   // HACK: even if we do not implement copy'n'paste here, we need to disable
   // the DOM Mutation observer stuff temporarily
-
   keyboard.bind("paste", function(e) {
-    isPasting = true;
     _recordMutations = false;
   }, "keypress");
 
