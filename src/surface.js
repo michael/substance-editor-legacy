@@ -3,7 +3,6 @@
 var _ = require("underscore");
 var View = require("substance-application").View;
 var util = require("substance-util");
-var Keyboard = require("./surface_keyboard");
 
 // Substance.Surface
 // ==========================================================================
@@ -28,8 +27,10 @@ var Surface = function(docCtrl, renderer, options) {
   this.listenTo(this.document, "graph:reset", this.reset);
 
   if (docCtrl.isEditor()) {
+    var Commander = require("substance-commander");
     var keymap = options.keymap || Surface._getDefaultKeyMap();
-    Surface.addEditingBehavior(this, new Keyboard(docCtrl, keymap));
+    this.keyboard = new Commander.Keyboard(keymap);
+    Surface.addEditingBehavior(this);
   }
 };
 
@@ -280,6 +281,7 @@ Surface.Prototype = function() {
     _.each(this.nodeViews, function(n) {
       n.dispose();
     }, this);
+    if (this.keyboard) this.keyboard.disconnect(this.el);
   };
 
   // HACK: used by outline

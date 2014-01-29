@@ -5,11 +5,12 @@
 // We extracted all the ugly code dealing with keyboard and mouse events
 // which is in first place ugly and secondly too. Thirdly, it is still rather experimental.
 
-var addEditingBehavior = function(surface, keyboard) {
+var addEditingBehavior = function(surface) {
 
   var el = surface.el;
   var $el = surface.$el;
   var editorCtrl = surface.docCtrl;
+  var keyboard = surface.keyboard;
 
   el.setAttribute("contenteditable", "true");
   el.spellcheck = false;
@@ -100,12 +101,6 @@ var addEditingBehavior = function(surface, keyboard) {
     return surface.renderSelection.apply(surface, arguments);
   };
 
-  // HACK: even if we do not implement copy'n'paste here, we need to disable
-  // the DOM Mutation observer stuff temporarily
-  keyboard.bind("paste", function(e) {
-    _recordMutations = false;
-  }, "keypress");
-
   // Override the dispose method to bind extra disposing stuff
   // --------
   // TODO: we should really consider to make this an independet class instead of a mix-in
@@ -119,7 +114,7 @@ var addEditingBehavior = function(surface, keyboard) {
     el.removeEventListener("input", _onTextInput, true);
     $el.off("mouseup", _onMouseup);
     _mutationObserver.disconnect();
-    keyboard.disconnect();
+    keyboard.disconnect(el);
   };
 
   // API for handling keyboard input
@@ -145,6 +140,77 @@ var addEditingBehavior = function(surface, keyboard) {
     };
   };
 
+
+  // Key-bindings
+  // --------
+
+  keyboard.bind("selection", function() {
+    surface.onCursorMoved();
+  }, "keydown");
+
+  // Note: these stupid 'surface.manipulate' stuff is currently necessary
+  // as I could not find another way to distinguish the cases for regular text input
+  // and multi-char input. It would not be necessary, if we had a robust way
+  // to recognize native key events for that complex chars...
+  // However, for now that dirt... we can this streamline in future - for sure...
+
+  keyboard.bindMapped("backspace", surface.manipulate(function() {
+    editorCtrl.delete("left");
+  }), "keydown");
+
+  keyboard.bindMapped("delete", surface.manipulate(function() {
+    editorCtrl.delete("right");
+  }), "keydown");
+
+  keyboard.bindMapped("break", surface.manipulate(function() {
+    editorCtrl.breakNode();
+  }), "keydown");
+
+  keyboard.bindMapped("soft-break", surface.manipulate(function() {
+    editorCtrl.write("\n");
+  }), "keydown");
+
+  keyboard.bindMapped("blank", surface.manipulate(function() {
+    editorCtrl.write(" ");
+  }), "keydown");
+
+  keyboard.bindMapped("indent", surface.manipulate(function() {
+    editorCtrl.indent("right");
+  }), "keydown");
+
+  keyboard.bindMapped("unindent", surface.manipulate(function() {
+    editorCtrl.indent("left");
+  }), "keydown");
+
+  keyboard.bindMapped("undo", surface.manipulate(function() {
+    editorCtrl.undo();
+  }), "keydown");
+
+  keyboard.bindMapped("redo", surface.manipulate(function() {
+    editorCtrl.redo();
+  }), "keydown");
+
+  keyboard.bindMapped("strong", surface.manipulate(function() {
+    editorCtrl.annotate("strong");
+  }), "keydown");
+
+  keyboard.bindMapped("emphasis", surface.manipulate(function() {
+    editorCtrl.annotate("emphasis");
+  }), "keydown");
+
+  // EXPERIMENTAL hooks for creating new node and annotation types
+
+  keyboard.bindMapped("heading", surface.manipulate(function() {
+    editorCtrl.insertNode("heading", {"level": 1});
+  }), "keydown");
+
+  // HACK: even if we do not implement copy'n'paste here, we need to disable
+  // the DOM Mutation observer stuff temporarily
+  keyboard.bindMapped("paste", function(e) {
+    _recordMutations = false;
+  }, "keypress");
+
+
   // Initialization
   // --------
 
@@ -155,7 +221,7 @@ var addEditingBehavior = function(surface, keyboard) {
     el.addEventListener("input", _onTextInput, true);
     $el.mouseup(_onMouseup);
     _mutationObserver.observe(el, _mutationObserverConfig);
-    keyboard.connect(surface);
+    keyboard.connect(el);
   };
 
   _initialize();
