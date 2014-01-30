@@ -221,23 +221,84 @@ var BasicEditing = function() {
     },
 
     "Muli-node delete (Partial/Partial)", function() {
-      // should join the nodes
-      assert.fail("Not implemented.");
+      this.setup();
+
+      var doc = this.session.document;
+      var t1 = doc.get("t1");
+      var t2 = doc.get("t2");
+      var text1 = t1.content;
+      var text2 = t2.content;
+
+      var charPos = 10;
+      var expected = text1.substring(0,charPos) + text2.substring(charPos);
+
+      this.session.selection.set({start: [1, charPos], end: [2, charPos]});
+      this.editor.delete();
+
+      assert.isEqual(expected, t1.content);
+      assert.isDefined(doc.get("t1"));
+      assert.isUndefined(doc.get("t2"));
     },
 
     "Muli-node delete (Full/Partial)", function() {
-      // should delete the first
-      assert.fail("Not implemented.");
+      this.setup();
+
+      var doc = this.session.document;
+      var t1 = doc.get("t1");
+      var t2 = doc.get("t2");
+      var text1 = t1.content;
+      var text2 = t2.content;
+
+      var charPos = 10;
+      var expected = text2.substring(charPos);
+
+      this.session.selection.set({start: [1, 0], end: [2, charPos]});
+
+      // should delete the first and trim the second
+      this.editor.delete();
+
+      assert.isEqual(expected, t2.content);
+      assert.isUndefined(doc.get("t1"));
+      assert.isDefined(doc.get("t2"));
     },
 
     "Muli-node delete (Full/Full)", function() {
+      this.setup();
+
+      var doc = this.session.document;
+      var t1 = doc.get("t1");
+      var t2 = doc.get("t2");
+      var text2 = t2.content;
+
+      this.session.selection.set({start: [1, 0], end: [2, text2.length]});
+
       // should delete both
-      assert.fail("Not implemented.");
+      this.editor.delete();
+
+      assert.isUndefined(doc.get("t1"));
+      assert.isUndefined(doc.get("t2"));
     },
 
     "Muli-node delete (Partial/Full)", function() {
+      this.setup();
+
+      var doc = this.session.document;
+      var t1 = doc.get("t1");
+      var t2 = doc.get("t2");
+      var text1 = t1.content;
+      var text2 = t2.content;
+
+      var charPos = 10;
+      var expected = text1.substring(0, charPos);
+
+      this.session.selection.set({start: [1, charPos], end: [2, text2.length]});
+
       // should delete second
-      assert.fail("Not implemented.");
+      this.editor.delete();
+
+      assert.isEqual(expected, t1.content);
+      assert.isDefined(doc.get("t1"));
+      assert.isUndefined(doc.get("t2"));
     },
 
   ];
