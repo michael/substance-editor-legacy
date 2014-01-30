@@ -3,6 +3,10 @@
 var _ = require("underscore");
 var util = require("substance-util");
 
+var errors = util.errors;
+var EditingError = errors.define("EditingError");
+
+
 // A Controller that makes Nodes and a Document.Container editable
 // ========
 //
@@ -33,9 +37,9 @@ EditorController.Prototype = function() {
 
   this.delete = function(direction) {
     var session = this.session.startSimulation();
-    // var doc = session.document;
     var sel = session.selection;
 
+    // Note: ignoring an invalid selection
     if (sel.isNull()) return;
 
     if (sel.isCollapsed()) {
@@ -154,14 +158,13 @@ EditorController.Prototype = function() {
 
   // Insert text at the current position
   // --------
-  // Note: currently only works for text nodes.
-  // TODO: we need support for textish properties, too.
+  // The selection must not be null otherwise an EditingError is thrown.
 
   this.write = function(text) {
     var selection = this.session.selection;
+
     if (selection.isNull()) {
-      console.error("Can not write, as no position has been selected.");
-      return;
+      throw new EditingError("Can not write, as no position has been selected.");
     }
 
     var session = this.session.startSimulation();
@@ -392,8 +395,12 @@ EditorController.Prototype = function() {
   };
 
   var _afterEdit = function(self) {
+    var doc = self.session.document;
+
     // setting a 'master' reference to the current state
-    self.session.document.chronicle.mark("master");
+    if (doc.chronicle) {
+      doc.chronicle.mark("master");
+    }
     self.trigger("document:edited");
   };
 
@@ -694,5 +701,7 @@ Object.defineProperties(EditorController.prototype, {
     }
   }
 });
+
+EditorController.EditingError = EditingError;
 
 module.exports = EditorController;
