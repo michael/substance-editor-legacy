@@ -547,11 +547,15 @@ EditorController.Prototype = function() {
       var nodeComponents = container.getNodeComponents(node.id);
       var firstIdx = i;
       var lastIdx = firstIdx + nodeComponents.length - 1;
+
+      // if it is a full selection schedule a command to delete the node
       if (lastIdx < ranges.length && r.isFull() && ranges[lastIdx].isFull()) {
         editor = viewEditor;
         canDelete = editor.canDeleteNode(session, node, r.component.nodePos);
         cmds.push({type: "node", editor: editor, range: r});
-      } else {
+      }
+      // ... otherwise schedule a command for trimming the node.
+      else {
         editor = _getEditor(self, node);
         for (var j=firstIdx; j<=lastIdx; j++) {
           r = ranges[j];
@@ -562,6 +566,8 @@ EditorController.Prototype = function() {
 
       i = lastIdx;
 
+      // TODO: we need add a mechanism to provide a feedback about that, e.g., so that the UI can display some
+      // kind of messsage
       if (!canDelete) {
         console.log("Can't delete component:", r.component);
         return false;
@@ -573,7 +579,6 @@ EditorController.Prototype = function() {
     var doJoin = (ranges.length > 0 && ranges[0].isPartial() && ranges[ranges.length-1].isPartial());
 
     // Perform the deletions
-    // ........
     // Note: we have to perform the deletions in inverse order
     // so that the node positions remain valid
     for (i = cmds.length - 1; i >= 0; i--) {
