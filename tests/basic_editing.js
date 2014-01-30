@@ -240,13 +240,12 @@ var BasicEditing = function() {
       assert.isUndefined(doc.get("t2"));
     },
 
+    // should delete the first and trim the second
     "Muli-node delete (Full/Partial)", function() {
       this.setup();
 
       var doc = this.session.document;
-      var t1 = doc.get("t1");
       var t2 = doc.get("t2");
-      var text1 = t1.content;
       var text2 = t2.content;
 
       var charPos = 10;
@@ -254,7 +253,6 @@ var BasicEditing = function() {
 
       this.session.selection.set({start: [1, 0], end: [2, charPos]});
 
-      // should delete the first and trim the second
       this.editor.delete();
 
       assert.isEqual(expected, t2.content);
@@ -262,23 +260,23 @@ var BasicEditing = function() {
       assert.isDefined(doc.get("t2"));
     },
 
+    // should delete both
     "Muli-node delete (Full/Full)", function() {
       this.setup();
 
       var doc = this.session.document;
-      var t1 = doc.get("t1");
       var t2 = doc.get("t2");
       var text2 = t2.content;
 
       this.session.selection.set({start: [1, 0], end: [2, text2.length]});
 
-      // should delete both
       this.editor.delete();
 
       assert.isUndefined(doc.get("t1"));
       assert.isUndefined(doc.get("t2"));
     },
 
+    // should delete second
     "Muli-node delete (Partial/Full)", function() {
       this.setup();
 
@@ -293,7 +291,6 @@ var BasicEditing = function() {
 
       this.session.selection.set({start: [1, charPos], end: [2, text2.length]});
 
-      // should delete second
       this.editor.delete();
 
       assert.isEqual(expected, t1.content);
@@ -301,6 +298,70 @@ var BasicEditing = function() {
       assert.isUndefined(doc.get("t2"));
     },
 
+    "Muli-node delete (Partial/Full/Full/Partial)", function() {
+      this.setup();
+
+      var doc = this.session.document;
+      var t1 = doc.get("t1");
+      var t3 = doc.get("t3");
+      var text1 = t1.content;
+      var text3 = t3.content;
+
+      var charPos = 10;
+      var expected = text1.substring(0, charPos) + text3.substring(charPos);
+
+      this.session.selection.set({start: [1, charPos], end: [4, charPos]});
+
+      this.editor.delete();
+
+      assert.isEqual(expected, t1.content);
+      assert.isDefined(doc.get("t1"));
+      assert.isUndefined(doc.get("t2"));
+      assert.isUndefined(doc.get("h2"));
+      assert.isUndefined(doc.get("t3"));
+    },
+
+    // This should delete the selection and insert the text.
+    "Write over a selection (single node / partial)", function() {
+      this.setup();
+
+      var doc = this.session.document;
+
+      var t1 = doc.get("t1");
+      var text1 = t1.content;
+      var insertedText = "bla";
+
+      var charPos = 10;
+      this.session.selection.set({start: [1, charPos], end: [1, charPos+3]});
+      this.editor.write(insertedText);
+
+      var expected = text1.substring(0, charPos) + insertedText + text1.substring(charPos+3);
+      assert.isEqual(expected, t1.content);
+    },
+
+    // should delete the selection and insert the text.
+    "Write over a selection (multi-nodes)", function() {
+
+      this.setup();
+      var doc = this.session.document;
+
+      var t1 = doc.get("t1");
+      var t3 = doc.get("t3");
+      var text1 = t1.content;
+      var text3 = t3.content;
+      var insertedText = "bla";
+
+      var charPos = 10;
+      this.session.selection.set({start: [1, charPos], end: [4, charPos]});
+      this.editor.write(insertedText);
+
+      var expected = text1.substring(0, charPos) + insertedText + text3.substring(charPos);
+      assert.isEqual(expected, t1.content);
+      assert.isDefined(doc.get("t1"));
+      assert.isUndefined(doc.get("t2"));
+      assert.isUndefined(doc.get("h2"));
+      assert.isUndefined(doc.get("t3"));
+    },
   ];
 };
 

@@ -16,19 +16,13 @@ var SimpleViewEditor = function(factory) {
 
 SimpleViewEditor.Prototype = function() {
 
-  this.canInsertNode = function(session, node, nodePos) {
-    return true;
-  };
-
-  this.insertNode = function(session, node, nodePos) {
-    session.document.show(this.view, node.id, nodePos);
-  };
-
-  this.canDeleteNode = function(session, node, nodePos) {
+  this.canDeleteNode = function(session, node) {
+    var nodePos = this._nodePos(session, node.id);
     return (nodePos >= 0 && nodePos < this._length(session));
   };
 
-  this.deleteNode = function(session, node, nodePos) {
+  this.deleteNode = function(session, node) {
+    var nodePos = this._nodePos(session, node.id);
     var diffOp = ArrayOperation.Delete(nodePos, node.id);
     session.document.apply(ObjectOperation.Update([this.view, "nodes"], diffOp));
 
@@ -53,6 +47,9 @@ SimpleViewEditor.Prototype = function() {
     return session.document.nodes[this.view].nodes[pos];
   };
 
+  this._nodePos = function(session, nodeId) {
+    return session.document.nodes[this.view].nodes.indexOf(nodeId);
+  };
 };
 
 SimpleViewEditor.prototype = new SimpleViewEditor.Prototype();
