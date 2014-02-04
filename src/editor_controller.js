@@ -2,6 +2,7 @@
 
 var _ = require("underscore");
 var util = require("substance-util");
+var SurfaceController = require("substance-surface").SurfaceController;
 
 var errors = util.errors;
 var EditingError = errors.define("EditingError");
@@ -632,7 +633,7 @@ EditorController.Prototype = function() {
     return issue.id;
   };
 };
-
+EditorController.Prototype.prototype = SurfaceController.prototype;
 EditorController.prototype = new EditorController.Prototype();
 
 Object.defineProperties(EditorController.prototype, {

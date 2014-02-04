@@ -1,20 +1,25 @@
 "use strict";
 
-// Makes a Surface editable
+var Surface = require("substance-surface");
+
+// The Editor is an editable Surface
 // --------
-// We extracted all the ugly code dealing with keyboard and mouse events
-// which is in first place ugly and secondly too. Thirdly, it is still rather experimental.
+// Don't look too close at this code. It is ugly. Yes. It is.
 
-var addEditingBehavior = function(surface) {
+var Editor = function(docCtrl, renderer, options) {
+  Surface.call(this, docCtrl, renderer);
 
-  var el = surface.el;
-  var $el = surface.$el;
-  var editorCtrl = surface.docCtrl;
-  var keyboard = surface.keyboard;
+  options = options || {};
+  var keymap = options.keymap || Editor._getDefaultKeyMap();
+  var keyboard = new Keyboard(docCtrl, keymap);
+
+  var self = this;
+  var el = this.el;
+  var $el = this.$el;
+  var editorCtrl = docCtrl;
 
   el.setAttribute("contenteditable", "true");
   el.spellcheck = false;
-
 
   // Support for Multi-Char inputs
   // --------
@@ -45,7 +50,7 @@ var addEditingBehavior = function(surface) {
 
   var _onMouseup = function(e) {
     // _ignoreNextSelection = true;
-    surface.updateSelection(e);
+    self.updateSelection(e);
   };
 
   var _onKeyDown = function() {
@@ -98,7 +103,7 @@ var addEditingBehavior = function(surface) {
     //   _ignoreNextSelection = false;
     //   return;
     // }
-    return surface.renderSelection.apply(surface, arguments);
+    return self.renderSelection.apply(self, arguments);
   };
 
   // Override the dispose method to bind extra disposing stuff
@@ -106,9 +111,9 @@ var addEditingBehavior = function(surface) {
   // TODO: we should really consider to make this an independet class instead of a mix-in
   // and let the surface call the dispose explicitely
 
-  var __dispose__ = surface.dispose;
-  surface.dispose = function() {
-    __dispose__.call(surface);
+  var __dispose__ = this.dispose;
+  this.dispose = function() {
+    __dispose__.call(this);
     el.removeEventListener("keydown", _onKeyDown);
     el.removeEventListener("textInput", _onTextInput, true);
     el.removeEventListener("input", _onTextInput, true);
@@ -122,17 +127,17 @@ var addEditingBehavior = function(surface) {
   // Note: it is necessary to react in a delayed fashion using setTimeout
   // as the ContentEditable updates its content after the handler has been invoked
 
-  surface.onCursorMoved = function() {
+  this.onCursorMoved = function() {
     // call this after the movement has been done by the contenteditable
     setTimeout(function() {
       // _ignoreNextSelection = true;
-      surface.updateSelection();
+      self.updateSelection();
     }, 0);
   };
 
   // HACK: up to now this is the only way I figured out to recognize if an observed DOM manipulation
   // originated from a Substance.Document update or from an multi-char input.
-  surface.manipulate = function(f, propagate) {
+  this.manipulate = function(f, propagate) {
     return function(e) {
       _recordMutations = false;
       setTimeout(f, 0);
@@ -145,7 +150,7 @@ var addEditingBehavior = function(surface) {
   // --------
 
   keyboard.bind("selection", function() {
-    surface.onCursorMoved();
+    self.onCursorMoved();
   }, "keydown");
 
   // Note: these stupid 'surface.manipulate' stuff is currently necessary
@@ -154,53 +159,53 @@ var addEditingBehavior = function(surface) {
   // to recognize native key events for that complex chars...
   // However, for now that dirt... we can this streamline in future - for sure...
 
-  keyboard.bindMapped("backspace", surface.manipulate(function() {
+  keyboard.bindMapped("backspace", self.manipulate(function() {
     editorCtrl.delete("left");
   }), "keydown");
 
-  keyboard.bindMapped("delete", surface.manipulate(function() {
+  keyboard.bindMapped("delete", self.manipulate(function() {
     editorCtrl.delete("right");
   }), "keydown");
 
-  keyboard.bindMapped("break", surface.manipulate(function() {
+  keyboard.bindMapped("break", self.manipulate(function() {
     editorCtrl.breakNode();
   }), "keydown");
 
-  keyboard.bindMapped("soft-break", surface.manipulate(function() {
+  keyboard.bindMapped("soft-break", self.manipulate(function() {
     editorCtrl.write("\n");
   }), "keydown");
 
-  keyboard.bindMapped("blank", surface.manipulate(function() {
+  keyboard.bindMapped("blank", self.manipulate(function() {
     editorCtrl.write(" ");
   }), "keydown");
 
-  keyboard.bindMapped("indent", surface.manipulate(function() {
+  keyboard.bindMapped("indent", self.manipulate(function() {
     editorCtrl.indent("right");
   }), "keydown");
 
-  keyboard.bindMapped("unindent", surface.manipulate(function() {
+  keyboard.bindMapped("unindent", self.manipulate(function() {
     editorCtrl.indent("left");
   }), "keydown");
 
-  keyboard.bindMapped("undo", surface.manipulate(function() {
+  keyboard.bindMapped("undo", self.manipulate(function() {
     editorCtrl.undo();
   }), "keydown");
 
-  keyboard.bindMapped("redo", surface.manipulate(function() {
+  keyboard.bindMapped("redo", self.manipulate(function() {
     editorCtrl.redo();
   }), "keydown");
 
-  keyboard.bindMapped("strong", surface.manipulate(function() {
+  keyboard.bindMapped("strong", self.manipulate(function() {
     editorCtrl.annotate("strong");
   }), "keydown");
 
-  keyboard.bindMapped("emphasis", surface.manipulate(function() {
+  keyboard.bindMapped("emphasis", self.manipulate(function() {
     editorCtrl.annotate("emphasis");
   }), "keydown");
 
   // EXPERIMENTAL hooks for creating new node and annotation types
 
-  keyboard.bindMapped("heading", surface.manipulate(function() {
+  keyboard.bindMapped("heading", self.manipulate(function() {
     editorCtrl.insertNode("heading", {"level": 1});
   }), "keydown");
 
@@ -215,7 +220,7 @@ var addEditingBehavior = function(surface) {
   // --------
 
   var _initialize = function() {
-    surface.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
+    self.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
     el.addEventListener("keydown", _onKeyDown);
     el.addEventListener("textInput", _onTextInput, true);
     el.addEventListener("input", _onTextInput, true);
@@ -227,4 +232,26 @@ var addEditingBehavior = function(surface) {
   _initialize();
 };
 
-module.exports = addEditingBehavior;
+
+Editor._getDefaultKeyMap = function() {
+  var keymap = require("./default_keymap_osx");
+  if (global.navigator !== undefined) {
+    var platform = global.navigator.platform;
+    if (platform.toLowerCase().search("linux") >= 0) {
+      keymap = require("./default_keymap_unix");
+    }
+    else if (platform.toLowerCase().search("win32") >= 0) {
+      // currently we use the same keymap for linux and win
+      keymap = require("./default_keymap_unix");
+    }
+  }
+  return keymap;
+};
+
+Editor.Prototype = function() {
+};
+Editor.Prototype.prototype = Surface.prototype;
+Editor.prototype = new Editor.Prototype();
+
+
+module.exports = Editor;
