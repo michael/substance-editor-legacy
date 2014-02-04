@@ -1,15 +1,23 @@
 "use strict";
 
-// Makes a Surface editable
+var Surface = require("substance-surface");
+var Keyboard = require("./surface_keyboard");
+
+// The Editor is an editable Surface
 // --------
-// We extracted all the ugly code dealing with keyboard and mouse events
-// which is in first place ugly and secondly too. Thirdly, it is still rather experimental.
+// Don't look too close at this code. It is ugly. Yes. It is.
 
-var addEditingBehavior = function(surface, keyboard) {
+var Editor = function(docCtrl, renderer, options) {
+  Surface.call(this, docCtrl, renderer);
 
-  var el = surface.el;
-  var $el = surface.$el;
-  var editorCtrl = surface.docCtrl;
+  options = options || {};
+  var keymap = options.keymap || Editor._getDefaultKeyMap();
+  var keyboard = new Keyboard(docCtrl, keymap);
+
+  var self = this;
+  var el = this.el;
+  var $el = this.$el;
+  var editorCtrl = docCtrl;
 
   el.setAttribute("contenteditable", "true");
   el.spellcheck = false;
@@ -44,7 +52,7 @@ var addEditingBehavior = function(surface, keyboard) {
 
   var _onMouseup = function(e) {
     // _ignoreNextSelection = true;
-    surface.updateSelection(e);
+    self.updateSelection(e);
   };
 
   var _onKeyDown = function() {
@@ -97,7 +105,7 @@ var addEditingBehavior = function(surface, keyboard) {
     //   _ignoreNextSelection = false;
     //   return;
     // }
-    return surface.renderSelection.apply(surface, arguments);
+    return self.renderSelection.apply(self, arguments);
   };
 
   // HACK: even if we do not implement copy'n'paste here, we need to disable
@@ -111,9 +119,9 @@ var addEditingBehavior = function(surface, keyboard) {
   // TODO: we should really consider to make this an independet class instead of a mix-in
   // and let the surface call the dispose explicitely
 
-  var __dispose__ = surface.dispose;
-  surface.dispose = function() {
-    __dispose__.call(surface);
+  var __dispose__ = this.dispose;
+  this.dispose = function() {
+    __dispose__.call(this);
     el.removeEventListener("keydown", _onKeyDown);
     el.removeEventListener("textInput", _onTextInput, true);
     el.removeEventListener("input", _onTextInput, true);
@@ -127,17 +135,17 @@ var addEditingBehavior = function(surface, keyboard) {
   // Note: it is necessary to react in a delayed fashion using setTimeout
   // as the ContentEditable updates its content after the handler has been invoked
 
-  surface.onCursorMoved = function() {
+  this.onCursorMoved = function() {
     // call this after the movement has been done by the contenteditable
     setTimeout(function() {
       // _ignoreNextSelection = true;
-      surface.updateSelection();
+      self.updateSelection();
     }, 0);
   };
 
   // HACK: up to now this is the only way I figured out to recognize if an observed DOM manipulation
   // originated from a Substance.Document update or from an multi-char input.
-  surface.manipulate = function(f, propagate) {
+  this.manipulate = function(f, propagate) {
     return function(e) {
       _recordMutations = false;
       setTimeout(f, 0);
@@ -149,16 +157,38 @@ var addEditingBehavior = function(surface, keyboard) {
   // --------
 
   var _initialize = function() {
-    surface.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
+    self.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
     el.addEventListener("keydown", _onKeyDown);
     el.addEventListener("textInput", _onTextInput, true);
     el.addEventListener("input", _onTextInput, true);
     $el.mouseup(_onMouseup);
     _mutationObserver.observe(el, _mutationObserverConfig);
-    keyboard.connect(surface);
+    keyboard.connect(self);
   };
 
   _initialize();
 };
 
-module.exports = addEditingBehavior;
+
+Editor._getDefaultKeyMap = function() {
+  var keymap = require("./default_keymap_osx");
+  if (global.navigator !== undefined) {
+    var platform = global.navigator.platform;
+    if (platform.toLowerCase().search("linux") >= 0) {
+      keymap = require("./default_keymap_unix");
+    }
+    else if (platform.toLowerCase().search("win32") >= 0) {
+      // currently we use the same keymap for linux and win
+      keymap = require("./default_keymap_unix");
+    }
+  }
+  return keymap;
+};
+
+Editor.Prototype = function() {
+};
+Editor.Prototype.prototype = Surface.prototype;
+Editor.prototype = new Editor.Prototype();
+
+
+module.exports = Editor;

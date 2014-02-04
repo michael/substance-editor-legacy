@@ -2,6 +2,7 @@
 
 var _ = require("underscore");
 var util = require("substance-util");
+var SurfaceController = require("substance-surface").SurfaceController;
 
 // A Controller that makes Nodes and a Document.Container editable
 // ========
@@ -646,7 +647,7 @@ EditorController.Prototype = function() {
     return issue.id;
   };
 };
-
+EditorController.Prototype.prototype = SurfaceController.prototype;
 EditorController.prototype = new EditorController.Prototype();
 
 Object.defineProperties(EditorController.prototype, {
