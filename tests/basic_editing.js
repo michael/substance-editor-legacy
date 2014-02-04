@@ -5,8 +5,6 @@
 
 var Test = require('substance-test');
 var assert = Test.assert;
-var registerTest = Test.registerTest;
-
 var Document = require("substance-document");
 var DocumentSession = Document.Session;
 var Container = Document.Container;
@@ -21,6 +19,10 @@ var TestDocument = require("./test_document");
 // No node specific specialities are checked, but the basic principles.
 
 var BasicEditing = function() {
+  Test.call(this);
+};
+
+BasicEditing.Prototype = function() {
 
   // Deactivate the default fixture for testing basic behavior
   this.setup = function() {
@@ -362,7 +364,11 @@ var BasicEditing = function() {
       assert.isUndefined(doc.get("h2"));
       assert.isUndefined(doc.get("t3"));
     },
+
+    "Break a text node"
   ];
 };
+BasicEditing.Prototype.prototype = Test.prototype;
+BasicEditing.prototype = new BasicEditing.Prototype();
 
-registerTest(['Substance.Surface', 'Basic Editing'], new BasicEditing());
+Test.registerTest(['Substance.Surface', 'Basic Editing'], new BasicEditing());
