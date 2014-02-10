@@ -1,6 +1,7 @@
 "use strict";
 
 var Surface = require("substance-surface");
+var Keyboard = require("substance-commander").Keyboard;
 
 // The Editor is an editable Surface
 // --------
@@ -11,7 +12,8 @@ var Editor = function(docCtrl, renderer, options) {
 
   options = options || {};
   var keymap = options.keymap || Editor._getDefaultKeyMap();
-  var keyboard = new Keyboard(docCtrl, keymap);
+  this.keyboard = new Keyboard(keymap);
+  var keyboard = this.keyboard;
 
   var self = this;
   var el = this.el;
@@ -119,7 +121,7 @@ var Editor = function(docCtrl, renderer, options) {
     el.removeEventListener("input", _onTextInput, true);
     $el.off("mouseup", _onMouseup);
     _mutationObserver.disconnect();
-    keyboard.disconnect(el);
+    this.keyboard.disconnect(el);
   };
 
   // API for handling keyboard input
