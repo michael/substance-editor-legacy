@@ -20,7 +20,6 @@ var Editor = function(docCtrl, renderer, options) {
   var $el = this.$el;
   var editorCtrl = docCtrl;
 
-  el.setAttribute("contenteditable", "true");
   el.spellcheck = false;
 
   // Support for Multi-Char inputs
@@ -221,17 +220,29 @@ var Editor = function(docCtrl, renderer, options) {
   // Initialization
   // --------
 
-  var _initialize = function() {
-    self.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
+  this.activate = function() {
+    this.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
     el.addEventListener("keydown", _onKeyDown);
     el.addEventListener("textInput", _onTextInput, true);
     el.addEventListener("input", _onTextInput, true);
     $el.mouseup(_onMouseup);
     _mutationObserver.observe(el, _mutationObserverConfig);
     keyboard.connect(el);
+    el.setAttribute("contenteditable", "true");
   };
 
-  _initialize();
+  this.deactivate = function() {
+    this.stopListening();
+    el.removeEventListener("keydown", _onKeyDown);
+    el.removeEventListener("textInput", _onTextInput, true);
+    el.removeEventListener("input", _onTextInput, true);
+    $el.off('mouseup');
+    _mutationObserver.disconnect();
+    keyboard.disconnect(el);
+    el.setAttribute("contenteditable", "true");
+  };
+
+  this.activate();
 };
 
 
