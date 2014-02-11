@@ -151,7 +151,7 @@ var Editor = function(docCtrl, renderer, options) {
   // Key-bindings
   // --------
 
-  keyboard.bind("selection", function() {
+  keyboard.bindMapped("selection", function() {
     self.onCursorMoved();
   }, "keydown");
 
