@@ -167,12 +167,20 @@ EditorController.Prototype = function() {
 
   this.undo = function() {
     if (!this.session.document.chronicle) return;
-    this.session.document.chronicle.rewind();
+    var op = this.session.document.chronicle.rewind();
+
+    if (op.data) {
+      this.session.selection.set(op.data.selBefore);
+    }
   };
 
   this.redo = function() {
     if (!this.session.document.chronicle) return;
-    this.session.document.chronicle.forward();
+    var op = this.session.document.chronicle.forward();
+
+    if (op.data) {
+      this.session.selection.set(op.data.selAfter);
+    }
   };
 
   // Create an annotation of given type for the current selection
