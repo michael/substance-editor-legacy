@@ -58,6 +58,7 @@ var Editor = function(docCtrl, renderer, options) {
     // TODO: we should enable this mechanism more specifically
     // I.e. by adding keycodes for possible multi-char keys
     _recordMutations = true;
+    _domChanges = [];
   };
 
 
@@ -215,7 +216,6 @@ var Editor = function(docCtrl, renderer, options) {
   keyboard.bindMapped("paste", function(e) {
     _recordMutations = false;
   }, "keypress");
-
 
   // Initialization
   // --------
