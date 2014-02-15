@@ -245,7 +245,7 @@ EditorController.Prototype = function() {
 
   // TODO: Hmmm.... I think this is not general editing, but rather special and should
   // go into the writer controller.
-  this.addReference = function(label, type, data) {
+  this.addReference = function(type, data) {
     var selection = this.session.selection;
     if (selection.isNull()) {
       console.error("Nothing is selected.");
@@ -254,24 +254,18 @@ EditorController.Prototype = function() {
 
     var session = this.session.startSimulation();
 
-    if (_write(this, session, label)) {
       var sel = session.selection;
       var cursor = sel.getCursor();
 
-      sel.set({
-        start: [cursor.pos, cursor.charPos-label.length],
-        end: [cursor.pos, cursor.charPos]
-      });
       _annotate(this, session, type, data);
 
       // Note: it feels better when the selection is collapsed after setting the
       // annotation style
-      sel.collapse("right");
+      // sel.collapse("right");
 
       session.save();
       selection.set(session.selection);
       _afterEdit(this);
-    }
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
