@@ -302,46 +302,7 @@ EditorController.Prototype = function() {
     }
 
     var session = this.session.startSimulation();
-    var sel = session.selection;
 
-    // if the selection is expanded then delete first
-    // Note: this.__deleteSelection collapses the session cursor.
-    if (!sel.isCollapsed()) {
-      if (!_deleteSelection(this, session)) {
-        console.log("Could not delete the selected content");
-        return false;
-      }
-    }
-
-    // HACK: trying to solve an issue with insertNode,
-    // which delegates to _breakNode.
-    // However, these two cases are not the same when the cursor is at the end of
-    // Note: need to update the charPos as the deletion may have changed the cursor
-    var cursor = sel.getCursor();
-    var pos = cursor.pos;
-    var charPos = cursor.charPos;
-    var component = session.container.getComponent(pos);
-
-    var cursorPos, nodePos;
-
-    // Note: we have a special treatment here for the case that the cursor is at the end
-    // of a component.
-    // Then no node-break is necessary and the new node can be inserted right
-    // after the current
-    if (charPos < component.getLength()) {
-      var couldBreak = _breakNode(this, session);
-      if (!couldBreak) {
-        return false;
-      }
-      cursorPos = sel.range().start;
-      nodePos = session.container.getNodePos(cursorPos[0]);
-    } else {
-      cursorPos = sel.range().start;
-      nodePos = session.container.getNodePos(cursorPos[0]) + 1;
-    }
-
-
-    // TODO: create a node with default values
     var newNode = {
       id: type + "_" +util.uuid(),
       type: type
@@ -349,22 +310,96 @@ EditorController.Prototype = function() {
     if (data) {
       _.extend(newNode, data);
     }
-    session.document.create(newNode);
-    session.document.show(session.view, newNode.id, nodePos);
 
-    //EXPERIMENTAL: Set the cursor into the node
-    // TODO: evaluate if it is a good approach to set the cursor into
-    // the first component at position 0.
-    var components = session.container.getNodeComponents(newNode.id);
-    if (components.length > 0) {
-      sel.set([components[0].pos, 0]);
+    if (_insertNode(this, session, newNode)) {
+      session.save();
+      this.session.selection.set(session.selection);
+      _afterEdit(this);
+    }
+  };
+
+  this.insertList = function() {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
+      throw new Error("Selection is null!");
     }
 
-    session.save();
-    this.session.selection.set(session.selection);
+    var session = this.session.startSimulation();
 
-    _afterEdit(this);
+    var listItem = {
+      type: "list_item",
+      id: "list_item_"+util.uuid(),
+      level: 1,
+      content: ""
+    };
+    session.document.create(listItem);
+
+    var list = {
+      type: "list",
+      id: "list_"+util.uuid(),
+      items: [listItem.id]
+    };
+
+    if (_insertNode(this, session, list)) {
+      session.save();
+      this.session.selection.set(session.selection);
+      _afterEdit(this);
+    }
   };
+
+  var _insertNode = function(self, session, newNode) {
+      var sel = session.selection;
+
+      // if the selection is expanded then delete first
+      // Note: this.__deleteSelection collapses the session cursor.
+      if (!sel.isCollapsed()) {
+        if (!_deleteSelection(self, session)) {
+          console.log("Could not delete the selected content");
+          return false;
+        }
+      }
+
+      // HACK: trying to solve an issue with insertNode,
+      // which delegates to _breakNode.
+      // However, these two cases are not the same when the cursor is at the end of
+      // Note: need to update the charPos as the deletion may have changed the cursor
+      var cursor = sel.getCursor();
+      var pos = cursor.pos;
+      var charPos = cursor.charPos;
+      var component = session.container.getComponent(pos);
+
+      var cursorPos, nodePos;
+
+      // Note: we have a special treatment here for the case that the cursor is at the end
+      // of a component.
+      // Then no node-break is necessary and the new node can be inserted right
+      // after the current
+      if (charPos < component.getLength()) {
+        var couldBreak = _breakNode(this, session);
+        if (!couldBreak) {
+          return false;
+        }
+        cursorPos = sel.range().start;
+        nodePos = session.container.getNodePos(cursorPos[0]);
+      } else {
+        cursorPos = sel.range().start;
+        nodePos = session.container.getNodePos(cursorPos[0]) + 1;
+      }
+
+      session.document.create(newNode);
+      session.document.show(session.view, newNode.id, nodePos);
+
+      //EXPERIMENTAL: Set the cursor into the node
+      // TODO: evaluate if it is a good approach to set the cursor into
+      // the first component at position 0.
+      var components = session.container.getNodeComponents(newNode.id);
+      if (components.length > 0) {
+        sel.set([components[0].pos, 0]);
+      }
+
+      return true;
+  };
+
 
   this.createComment = function(comment) {
     this.session.document.comment(comment);
@@ -518,7 +553,8 @@ EditorController.Prototype = function() {
 
   var _deleteSingle = function(self, session, component) {
     var sel = session.selection;
-    var node = component.node;
+    var node = session.container.getRootNodeFromPos(component.pos);
+
     var startChar = sel.startChar();
     var endChar = sel.endChar();
     var editor = _getEditor(self, node);

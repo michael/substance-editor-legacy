@@ -211,6 +211,10 @@ var Editor = function(docCtrl, renderer, options) {
     editorCtrl.insertNode("heading", {"level": 1});
   }), "keydown");
 
+  keyboard.bindMapped("list", self.manipulate(function() {
+    editorCtrl.insertList();
+  }), "keydown");
+
   // HACK: even if we do not implement copy'n'paste here, we need to disable
   // the DOM Mutation observer stuff temporarily
   keyboard.bindMapped("paste", function(e) {
