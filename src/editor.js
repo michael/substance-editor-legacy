@@ -51,7 +51,9 @@ var Editor = function(docCtrl, renderer, options) {
 
   var _onMouseup = function(e) {
     // _ignoreNextSelection = true;
-    self.updateSelection(e);
+    setTimeout(function() {
+      self.updateSelection(e);
+    }, 0);
   };
 
   var _onKeyDown = function() {
