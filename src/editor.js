@@ -1,7 +1,7 @@
 "use strict";
 
 var Surface = require("substance-surface");
-var Keyboard = require("substance-commander").Keyboard;
+var Keyboard = require("substance-commander").ChromeKeyboard;
 
 // The Editor is an editable Surface
 // --------
@@ -25,17 +25,6 @@ var Editor = function(docCtrl, renderer, options) {
   // Support for Multi-Char inputs
   // --------
 
-  // this array will be filled by the mutation observer
-  // with tuples {el, val} which represent the old state
-  // before the DOM mutation.
-  // In some cases, e.g. multi-chars, the DOM gets manipulated several times
-  // but only the last time a textinput event is triggered.
-  // Before applying delivering the textinput to the editor controller
-  // we reset the content of the element.
-  // Otherwise the editing change would be applied to the DOM a second time.
-  var _domChanges = [];
-  var _recordMutations = false;
-
   // We ignore selection updates whenever the selection was triggered by the UI
   // For example, when moving the cursor, the selection gets updated by the contenteditable,
   // so it is not necessary to update it again.
@@ -55,46 +44,6 @@ var Editor = function(docCtrl, renderer, options) {
       self.updateSelection(e);
     }, 0);
   };
-
-  var _onKeyDown = function() {
-    // TODO: we should enable this mechanism more specifically
-    // I.e. by adding keycodes for possible multi-char keys
-    _recordMutations = true;
-    _domChanges = [];
-  };
-
-
-  // The textinput event is fired after typing and pasting.
-  // This approach is rather questionable, as there are browser incompatibilities.
-  // The benefit of it is an easier way to interpret keyevents.
-
-  var _onTextInput = function(e) {
-    // console.log("Surface.Editing._onTextInput", e.data, _domChanges);
-
-    if (_recordMutations && _domChanges.length > 0) {
-      var change = _domChanges[0];
-      change.el.textContent = change.val;
-    }
-    _recordMutations = false;
-
-    if (!e.data) {
-      console.error("It happened that the textinput event had no data. Investigate!");
-    } else {
-      editorCtrl.write(e.data);
-      e.preventDefault();
-    }
-  };
-
-  var _mutationObserver = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      // console.log("MutationObserver:", mutation.target, mutation.oldValue);
-      if (_recordMutations) {
-        _domChanges.push({mutation: mutation, el: mutation.target, val: mutation.oldValue});
-      }
-    });
-  });
-  // configuration of the observer:
-  var _mutationObserverConfig = { subtree: true, characterData: true, characterDataOldValue: true };
 
   // Updates the window selection whenever the model selection changes
   // --------
@@ -118,12 +67,7 @@ var Editor = function(docCtrl, renderer, options) {
   var __dispose__ = this.dispose;
   this.dispose = function() {
     __dispose__.call(this);
-    el.removeEventListener("keydown", _onKeyDown);
-    el.removeEventListener("textInput", _onTextInput, true);
-    el.removeEventListener("input", _onTextInput, true);
-    $el.off("mouseup", _onMouseup);
-    _mutationObserver.disconnect();
-    this.keyboard.disconnect(el);
+    this.deactivate();
   };
 
   // API for handling keyboard input
@@ -139,23 +83,12 @@ var Editor = function(docCtrl, renderer, options) {
     }, 0);
   };
 
-  // HACK: up to now this is the only way I figured out to recognize if an observed DOM manipulation
-  // originated from a Substance.Document update or from an multi-char input.
-  this.manipulate = function(f, propagate) {
-    return function(e) {
-      _recordMutations = false;
-      setTimeout(f, 0);
-      if(!propagate) e.preventDefault();
-    };
-  };
-
-
   // Key-bindings
   // --------
 
-  keyboard.bindMapped("selection", function() {
+  keyboard.bind("selection", "keydown", function() {
     self.onCursorMoved();
-  }, "keydown");
+  });
 
   // Note: these stupid 'surface.manipulate' stuff is currently necessary
   // as I could not find another way to distinguish the cases for regular text input
@@ -163,88 +96,137 @@ var Editor = function(docCtrl, renderer, options) {
   // to recognize native key events for that complex chars...
   // However, for now that dirt... we can this streamline in future - for sure...
 
-  keyboard.bindMapped("backspace", self.manipulate(function() {
+  keyboard.bind("backspace", "keydown", function(e) {
     editorCtrl.delete("left");
-  }), "keydown");
+    e.preventDefault();
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("delete", self.manipulate(function() {
+  keyboard.bind("delete", "keydown", function(e) {
     editorCtrl.delete("right");
-  }), "keydown");
+    e.preventDefault();
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("break", self.manipulate(function() {
+  keyboard.bind("break", "keydown", function(e) {
     editorCtrl.breakNode();
-  }), "keydown");
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("soft-break", self.manipulate(function() {
+  keyboard.bind("soft-break", "keydown", function(e) {
     editorCtrl.write("\n");
-  }), "keydown");
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("blank", self.manipulate(function() {
+  keyboard.bind("blank", "keydown", function(e) {
     editorCtrl.write(" ");
-  }), "keydown");
+    e.preventDefault();
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("indent", self.manipulate(function() {
+  keyboard.bind("indent", "keydown", function(e) {
     editorCtrl.indent("right");
-  }), "keydown");
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("unindent", self.manipulate(function() {
+  keyboard.bind("unindent", "keydown", function(e) {
     editorCtrl.indent("left");
-  }), "keydown");
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("undo", self.manipulate(function() {
+  keyboard.bind("undo", "keydown", function(e) {
     editorCtrl.undo();
-  }), "keydown");
+    e.preventDefault();
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("redo", self.manipulate(function() {
+  keyboard.bind("redo", "keydown", function(e) {
     editorCtrl.redo();
-  }), "keydown");
+    e.preventDefault();
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("strong", self.manipulate(function() {
+  keyboard.bind("strong", "keydown", function(e) {
     editorCtrl.annotate("strong");
-  }), "keydown");
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("emphasis", self.manipulate(function() {
+  keyboard.bind("emphasis", "keydown", function(e) {
     editorCtrl.annotate("emphasis");
-  }), "keydown");
+    e.stopPropagation();
+  });
 
   // EXPERIMENTAL hooks for creating new node and annotation types
 
-  keyboard.bindMapped("heading", self.manipulate(function() {
+  keyboard.bind("heading", "keydown", function(e) {
     editorCtrl.insertNode("heading", {"level": 1});
-  }), "keydown");
+    e.stopPropagation();
+  });
 
-  keyboard.bindMapped("list", self.manipulate(function() {
+  keyboard.bind("list", "keydown", function(e) {
     editorCtrl.insertList();
-  }), "keydown");
+    e.stopPropagation();
+  });
 
-  // HACK: even if we do not implement copy'n'paste here, we need to disable
-  // the DOM Mutation observer stuff temporarily
-  keyboard.bindMapped("paste", function(e) {
-    _recordMutations = false;
-  }, "keypress");
+  keyboard.bind("paste", "keydown", keyboard.PASS);
+
+  keyboard.setDefaultHandler("keypress", function(e) {
+    console.log("Editor keypress", e, keyboard.describeEvent(e));
+    editorCtrl.write(String.fromCharCode(e.which));
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  keyboard.setDefaultHandler("keyup", function(e) {
+    console.log("Editor keyup", e, keyboard.describeEvent(e));
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  keyboard.setDefaultHandler("keydown", function(e) {
+    console.log("Editor keydown", e, keyboard.describeEvent(e));
+    // TODO: detect all multi-char inputs, and remember that information
+    // to augment the next keypressed character
+    if (e.keyCode === 229 || e.keyCode === 192) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  this.onTextInput = function(e) {
+    console.log("Editor onTextInput", e);
+
+    if (e.data) {
+      // HACK: the contenteditable when showing the character selection popup
+      // will change the selection to the previously inserted char... magigally
+      // We transfer the selection to the model and then write the text input.
+      setTimeout(function() {
+        self.updateSelection();
+        editorCtrl.write(e.data);
+      }, 0);
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   // Initialization
   // --------
 
   this.activate = function() {
     this.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
-    el.addEventListener("keydown", _onKeyDown);
-    el.addEventListener("textInput", _onTextInput, true);
-    el.addEventListener("input", _onTextInput, true);
+    el.addEventListener("textInput", this.onTextInput, true);
+    el.addEventListener("input", this.onTextInput, true);
     $el.mouseup(_onMouseup);
-    _mutationObserver.observe(el, _mutationObserverConfig);
     keyboard.connect(el);
     el.setAttribute("contenteditable", "true");
   };
 
   this.deactivate = function() {
     this.stopListening();
-    el.removeEventListener("keydown", _onKeyDown);
-    el.removeEventListener("textInput", _onTextInput, true);
-    el.removeEventListener("input", _onTextInput, true);
+    el.removeEventListener("textInput", this.onTextInput, true);
+    el.removeEventListener("input", this.onTextInput, true);
     $el.off('mouseup');
-    _mutationObserver.disconnect();
-    keyboard.disconnect(el);
+    keyboard.disconnect();
     el.setAttribute("contenteditable", "true");
   };
 
