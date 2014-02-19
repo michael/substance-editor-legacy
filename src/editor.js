@@ -179,10 +179,20 @@ var Editor = function(docCtrl, renderer, options) {
     e.stopPropagation();
   });
 
+  // HACK: to be able to handler deadkeys correctly we need still a DOMMutationObserver
+  // A contenteditable suppresses keydown events for deadkeys.
+  // This would be only way to prevent the browser from changing the DOM.
+  // Thus, we need to revert changes done by the model...
+  // Ideally, the browser could be prevented from changing the DOM. However, this is just under discussion with Robin Berjon from W§C.
+  // Another solution would be to suppress updates. This would need an adaption
+  // to operations allowing to have volatile data for application purpose. (not so easy to achieve)
+  var _domChanges = [];
+
   keyboard.setDefaultHandler("keyup", function(e) {
     //console.log("Editor keyup", e, keyboard.describeEvent(e));
     e.preventDefault();
     e.stopPropagation();
+    _domChanges = [];
   });
 
   keyboard.setDefaultHandler("keydown", function(e) {
@@ -195,18 +205,57 @@ var Editor = function(docCtrl, renderer, options) {
     }
   });
 
+  var _mutationObserver = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      var entry = {
+        mutation: mutation,
+        el: mutation.target,
+        value: mutation.target.textContent,
+        oldValue: mutation.oldValue
+      };
+      console.log("Recording mutation:", entry);
+      _domChanges.push(entry);
+    });
+  });
+  var _mutationObserverConfig = { subtree: true, characterData: true, characterDataOldValue: true };
+
+  // computes a trivial diff based on the assumption that a one char has been inserted into s1
+  var sinsert = function(val, oldVal) {
+    var pos;
+    for (pos = 0; pos < oldVal.length; pos++) {
+      if (oldVal[pos] !== val[pos]) break;
+    }
+    return [pos-1, val[pos]];
+  };
+
   this.onTextInput = function(e) {
     //console.log("Editor onTextInput", e);
+    var text = e.data;
 
-    if (e.data) {
+    if (!text && _domChanges.length > 0) {
+      var change = _domChanges[0];
+      var ins = sinsert(change.value, change.oldValue);
+      text = ins[1]
+
       // HACK: the contenteditable when showing the character selection popup
       // will change the selection to the previously inserted char... magigally
       // We transfer the selection to the model and then write the text input.
       setTimeout(function() {
-        self.updateSelection();
-        editorCtrl.write(e.data);
+        // self.updateSelection();
+        // reset the element to the change before the DOM polution
+        change.el.textContent = change.oldValue;
+        editorCtrl.write(text);
       }, 0);
     }
+
+    else if (e.data) {
+      setTimeout(function() {
+        self.updateSelection();
+        editorCtrl.write(text);
+      }, 0);
+    }
+
+    _domChanges = [];
     e.preventDefault();
     e.stopPropagation();
   };
@@ -219,6 +268,7 @@ var Editor = function(docCtrl, renderer, options) {
     el.addEventListener("textInput", this.onTextInput, true);
     el.addEventListener("input", this.onTextInput, true);
     $el.mouseup(_onMouseup);
+    _mutationObserver.observe(self.el, _mutationObserverConfig);
     keyboard.connect(el);
     el.setAttribute("contenteditable", "true");
   };
@@ -228,6 +278,7 @@ var Editor = function(docCtrl, renderer, options) {
     el.removeEventListener("textInput", this.onTextInput, true);
     el.removeEventListener("input", this.onTextInput, true);
     $el.off('mouseup');
+    _mutationObserver.disconnect();
     keyboard.disconnect();
     el.setAttribute("contenteditable", "true");
   };
