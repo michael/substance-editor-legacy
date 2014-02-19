@@ -171,20 +171,20 @@ var Editor = function(docCtrl, renderer, options) {
   keyboard.bind("paste", "keydown", keyboard.PASS);
 
   keyboard.setDefaultHandler("keypress", function(e) {
-    console.log("Editor keypress", e, keyboard.describeEvent(e));
+    //console.log("Editor keypress", e, keyboard.describeEvent(e));
     editorCtrl.write(String.fromCharCode(e.which));
     e.preventDefault();
     e.stopPropagation();
   });
 
   keyboard.setDefaultHandler("keyup", function(e) {
-    console.log("Editor keyup", e, keyboard.describeEvent(e));
+    //console.log("Editor keyup", e, keyboard.describeEvent(e));
     e.preventDefault();
     e.stopPropagation();
   });
 
   keyboard.setDefaultHandler("keydown", function(e) {
-    console.log("Editor keydown", e, keyboard.describeEvent(e));
+    //console.log("Editor keydown", e, keyboard.describeEvent(e));
     // TODO: detect all multi-char inputs, and remember that information
     // to augment the next keypressed character
     if (e.keyCode === 229 || e.keyCode === 192) {
@@ -194,7 +194,7 @@ var Editor = function(docCtrl, renderer, options) {
   });
 
   this.onTextInput = function(e) {
-    console.log("Editor onTextInput", e);
+    //console.log("Editor onTextInput", e);
 
     if (e.data) {
       // HACK: the contenteditable when showing the character selection popup
