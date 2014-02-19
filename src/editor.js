@@ -221,7 +221,7 @@ var Editor = function(docCtrl, renderer, options) {
         value: mutation.target.textContent,
         oldValue: mutation.oldValue
       };
-      console.log("Recording mutation:", entry);
+      // console.log("Recording mutation:", entry);
       _domChanges.push(entry);
     });
   });
