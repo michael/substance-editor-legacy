@@ -169,7 +169,7 @@ EditorController.Prototype = function() {
     if (!this.session.document.chronicle) return;
     var op = this.session.document.chronicle.rewind();
 
-    if (op.data) {
+    if (op && op.data) {
       this.session.selection.set(op.data.selBefore);
     }
   };
@@ -178,7 +178,7 @@ EditorController.Prototype = function() {
     if (!this.session.document.chronicle) return;
     var op = this.session.document.chronicle.forward();
 
-    if (op.data) {
+    if (op && op.data) {
       this.session.selection.set(op.data.selAfter);
     }
   };
