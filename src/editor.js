@@ -85,9 +85,11 @@ var Editor = function(docCtrl, renderer, options) {
 
   // Key-bindings
   // --------
-
+  keyboard.pass("selection");
   keyboard.bind("selection", "keydown", function() {
-    self.onCursorMoved();
+    window.setTimeout(function() {
+      self.onCursorMoved();
+    });
   });
 
   // Note: these stupid 'surface.manipulate' stuff is currently necessary
