@@ -112,11 +112,13 @@ var Editor = function(docCtrl, renderer, options) {
 
   keyboard.bind("break", "keydown", function(e) {
     editorCtrl.breakNode();
+    e.preventDefault();
     e.stopPropagation();
   });
 
   keyboard.bind("soft-break", "keydown", function(e) {
     editorCtrl.write("\n");
+    e.preventDefault();
     e.stopPropagation();
   });
 
@@ -128,11 +130,13 @@ var Editor = function(docCtrl, renderer, options) {
 
   keyboard.bind("indent", "keydown", function(e) {
     editorCtrl.indent("right");
+    e.preventDefault();
     e.stopPropagation();
   });
 
   keyboard.bind("unindent", "keydown", function(e) {
     editorCtrl.indent("left");
+    e.preventDefault();
     e.stopPropagation();
   });
 
@@ -150,11 +154,13 @@ var Editor = function(docCtrl, renderer, options) {
 
   keyboard.bind("strong", "keydown", function(e) {
     editorCtrl.annotate("strong");
+    e.preventDefault();
     e.stopPropagation();
   });
 
   keyboard.bind("emphasis", "keydown", function(e) {
     editorCtrl.annotate("emphasis");
+    e.preventDefault();
     e.stopPropagation();
   });
 
@@ -162,11 +168,13 @@ var Editor = function(docCtrl, renderer, options) {
 
   keyboard.bind("heading", "keydown", function(e) {
     editorCtrl.insertNode("heading", {"level": 1});
+    e.preventDefault();
     e.stopPropagation();
   });
 
   keyboard.bind("list", "keydown", function(e) {
     editorCtrl.insertList();
+    e.preventDefault();
     e.stopPropagation();
   });
 
