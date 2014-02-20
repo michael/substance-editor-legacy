@@ -39,15 +39,17 @@ var Editor = function(docCtrl, renderer, options) {
   // var _ignoreNextSelection = false;
 
   var _onMouseup = function(e) {
-    // _ignoreNextSelection = true;
-    setTimeout(function() {
-      try {
-        self.updateSelection(e);
-      } catch (err) {
-        editorCtrl.selection.clear();
-        self.trigger("error", err);
-      }
-    }, 0);
+    // do not react when the element is not contenteditable
+    if (e.isContentEditable) {
+      setTimeout(function() {
+        try {
+          self.updateSelection(e);
+        } catch (err) {
+          editorCtrl.selection.clear();
+          self.trigger("error", err);
+        }
+      }, 0);
+    }
   };
 
   // Updates the window selection whenever the model selection changes
