@@ -369,7 +369,7 @@ EditorController.Prototype = function() {
       // Then no node-break is necessary and the new node can be inserted right
       // after the current
       if (charPos < component.getLength()) {
-        var couldBreak = _breakNode(this, session);
+        var couldBreak = _breakNode(self, session);
         if (!couldBreak) {
           return false;
         }
