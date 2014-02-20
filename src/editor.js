@@ -40,7 +40,7 @@ var Editor = function(docCtrl, renderer, options) {
 
   var _onMouseup = function(e) {
     // do not react when the element is not contenteditable
-    if (e.isContentEditable) {
+    // if (e.isContentEditable) {
       setTimeout(function() {
         try {
           self.updateSelection(e);
@@ -49,7 +49,7 @@ var Editor = function(docCtrl, renderer, options) {
           self.trigger("error", err);
         }
       }, 0);
-    }
+    // }
   };
 
   // Updates the window selection whenever the model selection changes
