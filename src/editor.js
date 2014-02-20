@@ -46,7 +46,7 @@ var Editor = function(docCtrl, renderer, options) {
           self.updateSelection(e);
         } catch (err) {
           editorCtrl.selection.clear();
-          self.trigger("error", err);
+          editorCtrl.trigger("error", err);
         }
       }, 0);
     }
@@ -63,7 +63,7 @@ var Editor = function(docCtrl, renderer, options) {
       self.renderSelection.apply(self, arguments);
     } catch (err) {
       editorCtrl.selection.clear();
-      self.trigger("error", err);
+      editorCtrl.trigger("error", err);
     }
   };
 
@@ -90,7 +90,7 @@ var Editor = function(docCtrl, renderer, options) {
         self.updateSelection();
       } catch (err) {
         editorCtrl.selection.clear();
-        self.trigger("error", err);
+        editorCtrl.trigger("error", err);
       }
     }, 0);
   };
@@ -101,7 +101,7 @@ var Editor = function(docCtrl, renderer, options) {
         action.call(self, e);
       } catch (err) {
         console.log("Editor: triggering error", err);
-        self.trigger("error", err);
+        editorCtrl.trigger("error", err);
       }
       e.preventDefault();
       e.stopPropagation();
@@ -251,7 +251,7 @@ var Editor = function(docCtrl, renderer, options) {
           change.el.textContent = change.oldValue;
           editorCtrl.write(text);
         } catch (err) {
-          self.trigger("error", err);
+          editorCtrl.trigger("error", err);
         }
       }, 0);
     }
@@ -262,7 +262,7 @@ var Editor = function(docCtrl, renderer, options) {
           self.updateSelection();
           editorCtrl.write(text);
         } catch (err) {
-          self.trigger("error", err);
+          editorCtrl.trigger("error", err);
         }
       }, 0);
     }
