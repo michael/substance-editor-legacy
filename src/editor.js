@@ -41,7 +41,12 @@ var Editor = function(docCtrl, renderer, options) {
   var _onMouseup = function(e) {
     // _ignoreNextSelection = true;
     setTimeout(function() {
-      self.updateSelection(e);
+      try {
+        self.updateSelection(e);
+      } catch (err) {
+        editorCtrl.selection.clear();
+        self.trigger("error", err);
+      }
     }, 0);
   };
 
@@ -52,11 +57,12 @@ var Editor = function(docCtrl, renderer, options) {
   // triggers a model selection update, which in turn triggers a window selection update.
   // The latter would not be necessary in most cases.
   var onSelectionChanged = function() {
-    // if (_ignoreNextSelection === true) {
-    //   _ignoreNextSelection = false;
-    //   return;
-    // }
-    return self.renderSelection.apply(self, arguments);
+    try {
+      self.renderSelection.apply(self, arguments);
+    } catch (err) {
+      editorCtrl.selection.clear();
+      self.trigger("error", err);
+    }
   };
 
   // Override the dispose method to bind extra disposing stuff
@@ -78,9 +84,26 @@ var Editor = function(docCtrl, renderer, options) {
   this.onCursorMoved = function() {
     // call this after the movement has been done by the contenteditable
     setTimeout(function() {
-      // _ignoreNextSelection = true;
-      self.updateSelection();
+      try {
+        self.updateSelection();
+      } catch (err) {
+        editorCtrl.selection.clear();
+        self.trigger("error", err);
+      }
     }, 0);
+  };
+
+  var _manipulate = function(action) {
+    return function(e) {
+      try {
+        action.call(self, e);
+      } catch (err) {
+        console.log("Editor: triggering error", err);
+        self.trigger("error", err);
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
   };
 
   // Key-bindings
@@ -98,94 +121,66 @@ var Editor = function(docCtrl, renderer, options) {
   // to recognize native key events for that complex chars...
   // However, for now that dirt... we can this streamline in future - for sure...
 
-  keyboard.bind("backspace", "keydown", function(e) {
+  keyboard.bind("backspace", "keydown", _manipulate(function() {
     editorCtrl.delete("left");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("delete", "keydown", function(e) {
+  keyboard.bind("delete", "keydown", _manipulate(function() {
     editorCtrl.delete("right");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("break", "keydown", function(e) {
+  keyboard.bind("break", "keydown", _manipulate(function() {
     editorCtrl.breakNode();
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("soft-break", "keydown", function(e) {
+  keyboard.bind("soft-break", "keydown", _manipulate(function() {
     editorCtrl.write("\n");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("blank", "keydown", function(e) {
+  keyboard.bind("blank", "keydown", _manipulate(function() {
     editorCtrl.write(" ");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("indent", "keydown", function(e) {
+  keyboard.bind("indent", "keydown", _manipulate(function() {
     editorCtrl.indent("right");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("unindent", "keydown", function(e) {
+  keyboard.bind("unindent", "keydown", _manipulate(function() {
     editorCtrl.indent("left");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("undo", "keydown", function(e) {
+  keyboard.bind("undo", "keydown", _manipulate(function() {
     editorCtrl.undo();
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("redo", "keydown", function(e) {
+  keyboard.bind("redo", "keydown", _manipulate(function() {
     editorCtrl.redo();
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("strong", "keydown", function(e) {
+  keyboard.bind("strong", "keydown", _manipulate(function() {
     editorCtrl.annotate("strong");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("emphasis", "keydown", function(e) {
+  keyboard.bind("emphasis", "keydown", _manipulate(function() {
     editorCtrl.annotate("emphasis");
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
   // EXPERIMENTAL hooks for creating new node and annotation types
 
-  keyboard.bind("heading", "keydown", function(e) {
+  keyboard.bind("heading", "keydown", _manipulate(function() {
     editorCtrl.insertNode("heading", {"level": 1});
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
-  keyboard.bind("list", "keydown", function(e) {
+  keyboard.bind("list", "keydown", _manipulate(function() {
     editorCtrl.insertList();
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
   keyboard.bind("paste", "keydown", keyboard.PASS);
 
-  keyboard.setDefaultHandler("keypress", function(e) {
+  keyboard.setDefaultHandler("keypress", _manipulate(function(e) {
     //console.log("Editor keypress", e, keyboard.describeEvent(e));
     editorCtrl.write(String.fromCharCode(e.which));
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  }));
 
   // HACK: to be able to handler deadkeys correctly we need still a DOMMutationObserver
   // A contenteditable suppresses keydown events for deadkeys.
@@ -243,23 +238,30 @@ var Editor = function(docCtrl, renderer, options) {
     if (!text && _domChanges.length > 0) {
       var change = _domChanges[0];
       var ins = sinsert(change.value, change.oldValue);
-      text = ins[1]
+      text = ins[1];
 
       // HACK: the contenteditable when showing the character selection popup
       // will change the selection to the previously inserted char... magigally
       // We transfer the selection to the model and then write the text input.
       setTimeout(function() {
-        // self.updateSelection();
-        // reset the element to the change before the DOM polution
-        change.el.textContent = change.oldValue;
-        editorCtrl.write(text);
+        try {
+          // reset the element to the change before the DOM polution
+          change.el.textContent = change.oldValue;
+          editorCtrl.write(text);
+        } catch (err) {
+          self.trigger("error", err);
+        }
       }, 0);
     }
 
     else if (e.data) {
       setTimeout(function() {
-        self.updateSelection();
-        editorCtrl.write(text);
+        try {
+          self.updateSelection();
+          editorCtrl.write(text);
+        } catch (err) {
+          self.trigger("error", err);
+        }
       }, 0);
     }
 
