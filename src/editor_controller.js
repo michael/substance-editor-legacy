@@ -48,7 +48,7 @@ EditorController.Prototype = function() {
     var selection = this.session.selection;
 
     if (selection.isNull()) {
-      throw new EditingError("Can not write, as no position has been selected.");
+      throw new EditingError("Can not write, the current position is not valid.");
     }
 
     var session = this.session.startSimulation();
