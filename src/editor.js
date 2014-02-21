@@ -42,12 +42,8 @@ var Editor = function(docCtrl, renderer, options) {
     // do not react when the element is not contenteditable
     if (e.target.isContentEditable) {
       setTimeout(function() {
-        try {
-          self.updateSelection(e);
-        } catch (err) {
-          editorCtrl.selection.clear();
-          editorCtrl.trigger("error", err);
-        }
+        // Note: this method implements a try-catch guard triggering an error event
+        self.updateSelection(e);
       }, 0);
     }
   };
@@ -59,12 +55,8 @@ var Editor = function(docCtrl, renderer, options) {
   // triggers a model selection update, which in turn triggers a window selection update.
   // The latter would not be necessary in most cases.
   var onSelectionChanged = function() {
-    try {
-      self.renderSelection.apply(self, arguments);
-    } catch (err) {
-      editorCtrl.selection.clear();
-      editorCtrl.trigger("error", err);
-    }
+    // Note: this method implements a try-catch guard triggering an error event
+    self.renderSelection.apply(self, arguments);
   };
 
   // Override the dispose method to bind extra disposing stuff
@@ -86,12 +78,8 @@ var Editor = function(docCtrl, renderer, options) {
   this.onCursorMoved = function() {
     // call this after the movement has been done by the contenteditable
     setTimeout(function() {
-      try {
-        self.updateSelection();
-      } catch (err) {
-        editorCtrl.selection.clear();
-        editorCtrl.trigger("error", err);
-      }
+      // Note: this method implements a try-catch guard triggering an error event
+      self.updateSelection();
     }, 0);
   };
 
@@ -227,13 +215,13 @@ var Editor = function(docCtrl, renderer, options) {
   });
   var _mutationObserverConfig = { subtree: true, characterData: true, characterDataOldValue: true };
 
-  // computes a trivial diff based on the assumption that a one char has been inserted into s1
-  var sinsert = function(val, oldVal) {
+  // computes a trivial diff based on the assumption that only one character has been inserted
+  var inserted_character = function(val, oldVal) {
     var pos;
     for (pos = 0; pos < oldVal.length; pos++) {
       if (oldVal[pos] !== val[pos]) break;
     }
-    return [pos-1, val[pos]];
+    return val[pos];
   };
 
   this.onTextInput = function(e) {
@@ -242,8 +230,12 @@ var Editor = function(docCtrl, renderer, options) {
 
     if (!text && _domChanges.length > 0) {
       var change = _domChanges[0];
-      var ins = sinsert(change.value, change.oldValue);
-      text = ins[1];
+      var diffLength = change.value.length - change.oldValue.length;
+      if (diffLength !== 1) {
+        console.error("ASSERT: this code assumes that there is a difference of one character.");
+        return;
+      }
+      text = inserted_character(change.value, change.oldValue);
 
       // HACK: the contenteditable when showing the character selection popup
       // will change the selection to the previously inserted char... magigally
