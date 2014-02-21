@@ -117,6 +117,11 @@ var Editor = function(docCtrl, renderer, options) {
     });
   });
 
+  // they are handled on a higher level
+  keyboard.pass("copy");
+  keyboard.pass("cut");
+  keyboard.pass("paste");
+
   // Note: these stupid 'surface.manipulate' stuff is currently necessary
   // as I could not find another way to distinguish the cases for regular text input
   // and multi-char input. It would not be necessary, if we had a robust way
@@ -176,8 +181,6 @@ var Editor = function(docCtrl, renderer, options) {
   keyboard.bind("list", "keydown", _manipulate(function() {
     editorCtrl.insertList();
   }));
-
-  keyboard.bind("paste", "keydown", keyboard.PASS);
 
   keyboard.setDefaultHandler("keypress", _manipulate(function(e) {
     //console.log("Editor keypress", e, keyboard.describeEvent(e));
