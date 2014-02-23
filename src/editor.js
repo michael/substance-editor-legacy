@@ -166,6 +166,10 @@ var Editor = function(docCtrl, renderer, options) {
     editorCtrl.insertNode("heading", {"level": 1});
   }));
 
+  keyboard.bind("codeblock", "keydown", _manipulate(function() {
+    editorCtrl.insertNode("codeblock");
+  }));
+
   keyboard.bind("list", "keydown", _manipulate(function() {
     editorCtrl.insertList();
   }));
