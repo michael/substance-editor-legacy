@@ -407,6 +407,12 @@ EditorController.Prototype = function() {
       data: {
         level: 1
       }
+    },
+    {
+      action: "createNode",
+      type: "codeblock",
+      data: {
+      }
     }
   ];
   util.freeze(_allowedActions);
