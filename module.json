@@ -1,5 +1,5 @@
 {
-  "name"          : "substance-surface",
+  "name"          : "substance-editor",
   "description"   : "An extensible low-level interface for semantic rich text viewing and editing.",
   "url"           : "http://github.com/substance/surface/",
   "keywords"      : ["document renderer", "selection", "cursor"],
@@ -7,7 +7,7 @@
   "contributors"  : ["Oliver Buchtala"],
   "repository": {
       "type": "git",
-      "url": "https://github.com/substance/surface.git"
+      "url": "https://github.com/michael/substance-editor.git"
   },
   "dependencies": {
     "underscore": "",
@@ -20,5 +20,5 @@
     "substance-test": "",
     "substance-document": ""
   },
-  "version"       : "0.3.0"
+  "version"       : "0.1.0"
 }
