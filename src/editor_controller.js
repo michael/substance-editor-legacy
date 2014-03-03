@@ -288,6 +288,40 @@ EditorController.Prototype = function() {
     return editor.canBreak(this.session, component, charPos);
   };
 
+
+  this.insertFigure = function() {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
+      throw new Error("Selection is null!");
+    }
+
+    var session = this.session.startSimulation();
+
+    var caption = {
+      id: "text_"+util.uuid(),
+      type: "text",
+      content: "Enter caption"
+    };
+
+    session.document.create(caption);
+
+    var figure = {
+      type: "figure",
+      id: "figure_"+util.uuid(),
+      url: "",
+      image: "",
+      label: "Figure ",
+      caption: caption.id
+    };
+
+    if (_insertNode(this, session, figure)) {
+      session.save();
+      this.session.selection.set(session.selection);
+      _afterEdit(this);
+    }
+  };
+
+
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
   this.insertNode = function(type, data) {
     var selection = this.session.selection;
@@ -415,6 +449,7 @@ EditorController.Prototype = function() {
       }
     }
   ];
+
   util.freeze(_allowedActions);
 
   this.getAllowedActions = function() {
@@ -424,6 +459,7 @@ EditorController.Prototype = function() {
       return [];
     }
   };
+  
 
   // Private functions
   // ........
