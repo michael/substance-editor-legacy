@@ -390,15 +390,18 @@ EditorController.Prototype = function() {
 
     var session = this.session.startSimulation();
     var pos = session.selection.start[0];
-    var node = session.container.getRootNodeFromPos(pos);
+    var component = session.container.getComponent(pos);
+    var node = component.node;
     var editor = _getEditor(this, node);
 
     if (!editor.canChangeType(session, node, newType)) {
       return;
     }
 
-    editor.changeType(session, node, pos, newType, data);
+    editor.changeType(session, node, component, newType, data);
     session.save();
+
+    this.session.selection.set(selection);
     _afterEdit(this);
   };
 
