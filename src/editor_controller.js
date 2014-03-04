@@ -375,6 +375,33 @@ EditorController.Prototype = function() {
     }
   };
 
+  this.changeType = function(newType, data) {
+    var selection = this.session.selection;
+    console.log("EditorController.changeType()", newType, data);
+
+    if (selection.isNull()) {
+      console.error("Nothing selected.");
+      return;
+    }
+    if (selection.hasMultipleNodes()) {
+      console.error("Can not switch type of multiple nodes.");
+      return;
+    }
+
+    var session = this.session.startSimulation();
+    var pos = session.selection.start[0];
+    var node = session.container.getRootNodeFromPos(pos);
+    var editor = _getEditor(this, node);
+
+    if (!editor.canChangeType(session, node, newType)) {
+      return;
+    }
+
+    editor.changeType(session, node, pos, newType, data);
+    session.save();
+    _afterEdit(this);
+  };
+
   var _insertNode = function(self, session, newNode) {
       var sel = session.selection;
 
@@ -459,7 +486,7 @@ EditorController.Prototype = function() {
       return [];
     }
   };
-  
+
 
   // Private functions
   // ........
