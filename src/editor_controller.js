@@ -199,8 +199,10 @@ EditorController.Prototype = function() {
     var session = this.session.startSimulation();
 
     // TODO: where would be define default values?
-    if (type === "link") {
-      data.url = "http://example.com";
+    if (type === "link_reference") {
+      var data = data || {};
+      var linkId = _link(this, session, type);
+      data.target = linkId;
     }
 
     // TODO: how could this be generalized
@@ -744,15 +746,19 @@ EditorController.Prototype = function() {
     return true;
   };
 
+
+
   // TODO: this should be done via the node classes
   var _issueType = {
     "error_reference": "error",
     "remark_reference": "remark"
   };
+
   var _issueContainer = {
     "error": "errors",
     "remark": "remarks"
   };
+
   var _issue = function(self, session, annoType) {
     var type = _issueType[annoType];
     var container = _issueContainer[type];
@@ -773,7 +779,21 @@ EditorController.Prototype = function() {
     doc.show(container, [issue.id]);
     return issue.id;
   };
+
+  var _link = function(self, session, annoType) {
+    var doc = session.document;
+    var link = {
+      id: "link_" + util.uuid(),
+      type: "link",
+      url: "http://example.com"
+    };
+    doc.create(link);
+    doc.show("links", [link.id]);
+    return link.id;
+  };
 };
+
+
 EditorController.Prototype.prototype = SurfaceController.prototype;
 EditorController.prototype = new EditorController.Prototype();
 
