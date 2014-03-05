@@ -376,9 +376,8 @@ EditorController.Prototype = function() {
   };
 
   this.changeType = function(newType, data) {
+    // console.log("EditorController.changeType()", newType, data);
     var selection = this.session.selection;
-    console.log("EditorController.changeType()", newType, data);
-
     if (selection.isNull()) {
       console.error("Nothing selected.");
       return;
