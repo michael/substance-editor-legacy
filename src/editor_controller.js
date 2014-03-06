@@ -198,15 +198,8 @@ EditorController.Prototype = function() {
 
     var session = this.session.startSimulation();
 
-    // TODO: where would be define default values?
-    if (type === "link_reference") {
-      var data = data || {};
-      var linkId = _link(this, session, type);
-      data.target = linkId;
-    }
-
     // TODO: how could this be generalized
-    else if (type === "remark_reference" || type === "error_reference") {
+    if (type === "remark_reference" || type === "error_reference") {
       data = data || {};
       var issueId = _issue(this, session, type);
       data.target = issueId;
@@ -779,18 +772,6 @@ EditorController.Prototype = function() {
     doc.show(container, [issue.id]);
     return issue.id;
   };
-
-  var _link = function(self, session, annoType) {
-    var doc = session.document;
-    var link = {
-      id: "link_" + util.uuid(),
-      type: "link",
-      url: "http://example.com"
-    };
-    doc.create(link);
-    doc.show("links", [link.id]);
-    return link.id;
-  };
 };
 
 
@@ -844,5 +825,4 @@ Object.defineProperties(EditorController.prototype, {
 });
 
 EditorController.EditingError = EditingError;
-
 module.exports = EditorController;

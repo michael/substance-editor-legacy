@@ -275,7 +275,9 @@ var Editor = function(docCtrl, renderer, options) {
   // --------
 
   this.activate = function() {
-    this.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
+    editorCtrl.session.selection.on("selection:changed", onSelectionChanged);
+
+    // this.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
     el.addEventListener("textInput", this.onTextInput, true);
     el.addEventListener("input", this.onTextInput, true);
     $el.mouseup(_onMouseup);
@@ -285,7 +287,8 @@ var Editor = function(docCtrl, renderer, options) {
   };
 
   this.deactivate = function() {
-    this.stopListening();
+    // this.off("selection:changed");
+    editorCtrl.session.selection.off("selection:changed");
     el.removeEventListener("textInput", this.onTextInput, true);
     el.removeEventListener("input", this.onTextInput, true);
     $el.off('mouseup');
