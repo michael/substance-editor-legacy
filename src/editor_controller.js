@@ -309,7 +309,16 @@ EditorController.Prototype = function() {
       caption: caption.id
     };
 
-    if (_insertNode(this, session, figure)) {
+    session.document.create(figure);
+    session.document.show("figures", figure.id);
+
+    var blockReference = {
+      type: "block_reference",
+      id: "block_reference_"+util.uuid(),
+      target: figure.id
+    };
+
+    if (_insertNode(this, session, blockReference)) {
       session.save();
       this.session.selection.set(session.selection);
       _afterEdit(this);
