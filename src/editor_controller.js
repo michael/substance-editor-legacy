@@ -288,7 +288,7 @@ EditorController.Prototype = function() {
     var doc = this.session.document;
     var node = doc.create({
       id: "link_"+util.uuid(),
-      type: type,
+      type: "link",
       url: "http://example.com"
     });
     
@@ -318,7 +318,6 @@ EditorController.Prototype = function() {
 
     doc.create(figure);
     doc.show("figures", figure.id);
-    // figureId = figure.id;
     return figure.id;
   };
 
@@ -330,9 +329,6 @@ EditorController.Prototype = function() {
     }
 
     var session = this.session.startSimulation();
-
-    // if (!figureId) {
-    // }
 
     var blockReference = {
       type: "block_reference",
