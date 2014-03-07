@@ -284,13 +284,20 @@ EditorController.Prototype = function() {
   };
 
 
-  this.insertFigure = function() {
-    var selection = this.session.selection;
-    if (selection.isNull()) {
-      throw new Error("Selection is null!");
-    }
+  this.createLink = function() {
+    var doc = this.session.document;
+    var node = doc.create({
+      id: "link_"+util.uuid(),
+      type: type,
+      url: "http://example.com"
+    });
+    
+    this.document.show("links", [node.id]);
+    return node.id;    
+  };
 
-    var session = this.session.startSimulation();
+  this.createFigure = function() {
+    var doc = this.session.document;
 
     var caption = {
       id: "text_"+util.uuid(),
@@ -298,7 +305,7 @@ EditorController.Prototype = function() {
       content: "Enter caption"
     };
 
-    session.document.create(caption);
+    doc.create(caption);
 
     var figure = {
       type: "figure",
@@ -309,13 +316,28 @@ EditorController.Prototype = function() {
       caption: caption.id
     };
 
-    session.document.create(figure);
-    session.document.show("figures", figure.id);
+    doc.create(figure);
+    doc.show("figures", figure.id);
+    // figureId = figure.id;
+    return figure.id;
+  };
+
+
+  this.insertFigure = function(figureId) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
+      throw new Error("Selection is null!");
+    }
+
+    var session = this.session.startSimulation();
+
+    // if (!figureId) {
+    // }
 
     var blockReference = {
       type: "block_reference",
       id: "block_reference_"+util.uuid(),
-      target: figure.id
+      target: figureId
     };
 
     if (_insertNode(this, session, blockReference)) {
