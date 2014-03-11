@@ -2,6 +2,7 @@
 
 var Surface = require("substance-surface");
 var Keyboard = require("substance-commander").ChromeKeyboard;
+var MutationObserver = window.MutationObserver;
 
 // The Editor is an editable Surface
 // --------
