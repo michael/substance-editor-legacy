@@ -3,6 +3,16 @@
 var Surface = require("substance-surface");
 var Keyboard = require("substance-commander").ChromeKeyboard;
 
+var MutationObserver;
+
+if (!window.MutationObserver) {
+  if (window.WebKitMutationObserver) {
+    MutationObserver = window.WebKitMutationObserver;
+  }
+} else {
+  MutationObserver = window.MutationObserver;
+}
+
 // The Editor is an editable Surface
 // --------
 // Don't look too close at this code. It is ugly. Yes. It is.
