@@ -249,18 +249,11 @@ EditorController.Prototype = function() {
 
     var session = this.session.startSimulation();
 
-      var sel = session.selection;
-      var cursor = sel.getCursor();
+    _annotate(this, session, type, data);
 
-      _annotate(this, session, type, data);
-
-      // Note: it feels better when the selection is collapsed after setting the
-      // annotation style
-      // sel.collapse("right");
-
-      session.save();
-      selection.set(session.selection);
-      _afterEdit(this);
+    session.save();
+    selection.set(session.selection);
+    _afterEdit(this);
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
@@ -291,9 +284,9 @@ EditorController.Prototype = function() {
       type: "link",
       url: "http://example.com"
     });
-    
+
     this.document.show("links", [node.id]);
-    return node.id;    
+    return node.id;
   };
 
   this.createFigure = function() {
