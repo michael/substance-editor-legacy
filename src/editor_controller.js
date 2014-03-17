@@ -198,13 +198,8 @@ EditorController.Prototype = function() {
 
     var session = this.session.startSimulation();
 
-    // TODO: where would be define default values?
-    if (type === "link") {
-      data.url = "http://example.com";
-    }
-
     // TODO: how could this be generalized
-    else if (type === "remark_reference" || type === "error_reference") {
+    if (type === "remark_reference" || type === "error_reference") {
       data = data || {};
       var issueId = _issue(this, session, type);
       data.target = issueId;
@@ -254,18 +249,11 @@ EditorController.Prototype = function() {
 
     var session = this.session.startSimulation();
 
-      var sel = session.selection;
-      var cursor = sel.getCursor();
+    _annotate(this, session, type, data);
 
-      _annotate(this, session, type, data);
-
-      // Note: it feels better when the selection is collapsed after setting the
-      // annotation style
-      // sel.collapse("right");
-
-      session.save();
-      selection.set(session.selection);
-      _afterEdit(this);
+    session.save();
+    selection.set(session.selection);
+    _afterEdit(this);
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
@@ -289,13 +277,20 @@ EditorController.Prototype = function() {
   };
 
 
-  this.insertFigure = function() {
-    var selection = this.session.selection;
-    if (selection.isNull()) {
-      throw new Error("Selection is null!");
-    }
+  this.createLink = function() {
+    var doc = this.session.document;
+    var node = doc.create({
+      id: "link_"+util.uuid(),
+      type: "link",
+      url: "http://example.com"
+    });
 
-    var session = this.session.startSimulation();
+    this.document.show("links", [node.id]);
+    return node.id;
+  };
+
+  this.createFigure = function() {
+    var doc = this.session.document;
 
     var caption = {
       id: "text_"+util.uuid(),
@@ -303,7 +298,7 @@ EditorController.Prototype = function() {
       content: "Enter caption"
     };
 
-    session.document.create(caption);
+    doc.create(caption);
 
     var figure = {
       type: "figure",
@@ -314,7 +309,27 @@ EditorController.Prototype = function() {
       caption: caption.id
     };
 
-    if (_insertNode(this, session, figure)) {
+    doc.create(figure);
+    doc.show("figures", figure.id);
+    return figure.id;
+  };
+
+
+  this.insertFigure = function(figureId) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
+      throw new Error("Selection is null!");
+    }
+
+    var session = this.session.startSimulation();
+
+    var blockReference = {
+      type: "block_reference",
+      id: "block_reference_"+util.uuid(),
+      target: figureId
+    };
+
+    if (_insertNode(this, session, blockReference)) {
       session.save();
       this.session.selection.set(session.selection);
       _afterEdit(this);
@@ -744,15 +759,19 @@ EditorController.Prototype = function() {
     return true;
   };
 
+
+
   // TODO: this should be done via the node classes
   var _issueType = {
     "error_reference": "error",
     "remark_reference": "remark"
   };
+
   var _issueContainer = {
     "error": "errors",
     "remark": "remarks"
   };
+
   var _issue = function(self, session, annoType) {
     var type = _issueType[annoType];
     var container = _issueContainer[type];
@@ -774,6 +793,8 @@ EditorController.Prototype = function() {
     return issue.id;
   };
 };
+
+
 EditorController.Prototype.prototype = SurfaceController.prototype;
 EditorController.prototype = new EditorController.Prototype();
 
@@ -824,5 +845,4 @@ Object.defineProperties(EditorController.prototype, {
 });
 
 EditorController.EditingError = EditingError;
-
 module.exports = EditorController;
