@@ -42,10 +42,13 @@ var Editor = function(docCtrl, renderer, options) {
   var _onMouseup = function(e) {
     // do not react when the element is not contenteditable
     if (e.target.isContentEditable) {
-      setTimeout(function() {
+      // Note: this slows down node-webkit!
+      // TODO: it does not seem to be necessary with node-webkit...
+      // is it for the browser?
+      // window.setTimeout(function() {
         // Note: this method implements a try-catch guard triggering an error event
         self.updateSelection(e);
-      }, 0);
+      // });
     }
   };
 
@@ -78,10 +81,11 @@ var Editor = function(docCtrl, renderer, options) {
 
   this.onCursorMoved = function() {
     // call this after the movement has been done by the contenteditable
-    setTimeout(function() {
+    // TODO: this is not necessary for node-webkit, is it for browser?
+    // setTimeout(function() {
       // Note: this method implements a try-catch guard triggering an error event
       self.updateSelection();
-    }, 0);
+    // }, 0);
   };
 
   var _manipulate = function(action) {
@@ -101,8 +105,12 @@ var Editor = function(docCtrl, renderer, options) {
   // --------
   keyboard.pass("selection");
   keyboard.bind("selection", "keydown", function() {
+    // Note: this is essential for the 'collaboration' with contenteditable
+    // Whenever the selection is changed due to keyboard input
+    // we just register an update which will be executed after
+    // the contenteditable has processed the key.
     window.setTimeout(function() {
-      self.onCursorMoved();
+      self.updateSelection();
     });
   });
 
@@ -243,9 +251,9 @@ var Editor = function(docCtrl, renderer, options) {
       text = inserted_character(change.value, change.oldValue);
 
       // HACK: the contenteditable when showing the character selection popup
-      // will change the selection to the previously inserted char... magigally
+      // will change the selection to the previously inserted char... magically
       // We transfer the selection to the model and then write the text input.
-      setTimeout(function() {
+      window.setTimeout(function() {
         try {
           // reset the element to the change before the DOM polution
           change.el.textContent = change.oldValue;
@@ -257,7 +265,7 @@ var Editor = function(docCtrl, renderer, options) {
     }
 
     else if (e.data) {
-      setTimeout(function() {
+      window.setTimeout(function() {
         try {
           self.updateSelection();
           editorCtrl.write(text);
