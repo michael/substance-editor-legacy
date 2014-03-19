@@ -289,6 +289,10 @@ EditorController.Prototype = function() {
     return node.id;
   };
 
+
+  // TODO: remove
+  // -------------
+
   this.createFigure = function() {
     var doc = this.session.document;
 
@@ -312,28 +316,6 @@ EditorController.Prototype = function() {
     doc.create(figure);
     doc.show("figures", figure.id);
     return figure.id;
-  };
-
-
-  this.insertFigure = function(figureId) {
-    var selection = this.session.selection;
-    if (selection.isNull()) {
-      throw new Error("Selection is null!");
-    }
-
-    var session = this.session.startSimulation();
-
-    var blockReference = {
-      type: "block_reference",
-      id: "block_reference_"+util.uuid(),
-      target: figureId
-    };
-
-    if (_insertNode(this, session, blockReference)) {
-      session.save();
-      this.session.selection.set(session.selection);
-      _afterEdit(this);
-    }
   };
 
 
@@ -375,6 +357,7 @@ EditorController.Prototype = function() {
       level: 1,
       content: ""
     };
+
     session.document.create(listItem);
 
     var list = {
@@ -472,6 +455,11 @@ EditorController.Prototype = function() {
       return true;
   };
 
+  this._insertNode = function(session, newNode) {
+    return _insertNode(this, session, newNode);
+  };
+
+
 
   this.createComment = function(comment) {
     this.session.document.comment(comment);
@@ -526,6 +514,7 @@ EditorController.Prototype = function() {
     session.selection.set(selRange);
   };
 
+
   var _afterEdit = function(self) {
     var doc = self.session.document;
 
@@ -534,6 +523,11 @@ EditorController.Prototype = function() {
       doc.chronicle.mark("master");
     }
     self.trigger("document:edited");
+  };
+
+  // Expose to outside
+  this._afterEdit = function() {
+    _afterEdit(this);
   };
 
   var _getEditor = function(self, node) {
@@ -627,7 +621,6 @@ EditorController.Prototype = function() {
     }
 
     sel.set(newPos);
-
     return success;
   };
 
