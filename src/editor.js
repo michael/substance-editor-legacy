@@ -52,13 +52,14 @@ var Editor = function(docCtrl, renderer, options) {
   var _onMouseup = function(e) {
     // do not react when the element is not contenteditable
     if (e.target.isContentEditable) {
-      // Note: this slows down node-webkit!
-      // TODO: it does not seem to be necessary with node-webkit...
-      // is it for the browser?
-      // window.setTimeout(function() {
+      // NOTE: this is important to let the content-editable
+      // do the window selection update first
+      // strangely, it works almost without it, and is necessary only for one case
+      // when setting the cursor into an existing selection (??).
+      window.setTimeout(function() {
         // Note: this method implements a try-catch guard triggering an error event
         self.updateSelection(e);
-      // });
+      });
     }
   };
 
