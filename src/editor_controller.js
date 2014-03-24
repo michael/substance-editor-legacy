@@ -474,6 +474,12 @@ EditorController.Prototype = function() {
     },
     {
       action: "createNode",
+      type: "figure",
+      data: {
+      }
+    },
+    {
+      action: "createNode",
       type: "codeblock",
       data: {
       }
