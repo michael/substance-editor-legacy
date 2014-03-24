@@ -276,19 +276,17 @@ EditorController.Prototype = function() {
     return editor.canBreak(this.session, component, charPos);
   };
 
-
-  this.createLink = function() {
+  this.createCitation = function() {
     var doc = this.session.document;
     var node = doc.create({
-      id: "link_"+util.uuid(),
-      type: "link",
+      id: "webpage_"+util.uuid(),
+      type: "webpage",
       url: "http://example.com"
     });
 
-    this.document.show("links", [node.id]);
+    this.document.show("citations", [node.id]);
     return node.id;
   };
-
 
   // TODO: remove
   // -------------
