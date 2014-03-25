@@ -489,6 +489,8 @@ EditorController.Prototype = function() {
   util.freeze(_allowedActions);
 
   this.getAllowedActions = function() {
+    // TODO: When cursor is within a figure caption, do not allow
+    // figure insertion etc.
     if (this.canInsertNode()) {
       return _allowedActions;
     } else {
