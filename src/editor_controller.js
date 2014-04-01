@@ -834,7 +834,7 @@ Object.defineProperties(EditorController.prototype, {
     get: function() {
       // TODO: 'view' is not very accurate as it is actually the name of a view node
       // Beyond that 'view' as a node type is also confusing considering the Views.
-      console.error("TODO: rename this property.");
+      console.log("TODO: rename this property.");
       return this.session.container.name;
     },
     set: function() {
