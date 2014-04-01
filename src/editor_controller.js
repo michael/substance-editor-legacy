@@ -270,7 +270,7 @@ EditorController.Prototype = function() {
     var charPos = cursorPos[1];
 
     var component = container.getComponent(pos);
-    var node = component.node;
+    var node = component.root;
     var editor = _getEditor(this, node);
 
     return editor.canBreak(this.session, component, charPos);
@@ -386,7 +386,7 @@ EditorController.Prototype = function() {
     var session = this.session.startSimulation();
     var pos = session.selection.start[0];
     var component = session.container.getComponent(pos);
-    var node = component.node;
+    var node = component.root;
     var editor = _getEditor(this, node);
 
     if (!editor.canChangeType(session, node, newType)) {
@@ -427,7 +427,7 @@ EditorController.Prototype = function() {
       // of a component.
       // Then no node-break is necessary and the new node can be inserted right
       // after the current
-      if (charPos < component.getLength()) {
+      if (charPos < component.length) {
         var couldBreak = _breakNode(self, session);
         if (!couldBreak) {
           return false;
@@ -666,7 +666,7 @@ EditorController.Prototype = function() {
     // prepare commands for an easy deletion
     for (i = 0; i < ranges.length; i++) {
       r = ranges[i];
-      node = r.component.node;
+      node = r.component.root;
       var canDelete;
       var editor;
 
@@ -717,7 +717,7 @@ EditorController.Prototype = function() {
       if (c.type === "content") {
         c.editor.deleteContent(session, r.component, r.start, r.end);
       } else {
-        node = r.component.node;
+        node = r.component.root;
         c.editor.deleteNode(session, node);
         // TODO: in theory it might be possible that nodes are referenced somewhere else
         // however, we do not yet consider such situations and delete the node instantly
@@ -730,8 +730,8 @@ EditorController.Prototype = function() {
     // Perform a join
     if (doJoin) {
       // Retrieve updated components
-      var first = ranges[0].component.node;
-      var second = ranges[ranges.length-1].component.node;
+      var first = ranges[0].component.root;
+      var second = ranges[ranges.length-1].component.root;
       _join(self, session, first, second);
     }
 

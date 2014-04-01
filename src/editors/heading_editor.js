@@ -15,9 +15,9 @@ var HeadingEditor = function(factory) {
 HeadingEditor.Prototype = function() {
 
   this.breakNode = function(session, component, charPos) {
-    var node = component.node;
+    var node = component.root;
     var text = node.content;
-    var nodePos = component.nodePos;
+    var nodePos = component.rootPos;
 
     var newNode = {
       id: util.uuid()
@@ -94,12 +94,12 @@ HeadingEditor.Prototype = function() {
   };
 
   this.canIndent = function(session, component, direction) {
-    var node = component.node;
+    var node = component.root;
     return (direction === "right" && node.level < 4) || (direction === "left" && node.level > 0);
   };
 
   this.indent = function(session, component, direction) {
-    var node = component.node;
+    var node = component.root;
     var newLevel = node.level;
     if (direction === "left") {
       newLevel = Math.max(1, newLevel-1);

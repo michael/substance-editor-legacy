@@ -12,12 +12,12 @@ var TextNodeEditor = function(factory) {
 TextNodeEditor.Prototype = function() {
 
   this.canDeleteContent = function(session, component, startChar, endChar) {
-    var N = component.node.content.length;
+    var N = component.root.content.length;
     return startChar <= N && endChar <= N;
   };
 
   this.deleteContent = function(session, component, startChar, endChar) {
-    var node = component.node;
+    var node = component.root;
     var content = node.content;
     var diffOp = TextOperation.Delete(startChar, content.substring(startChar, endChar));
     var op = ObjectOperation.Update([node.id, "content"], diffOp, "string");
@@ -26,12 +26,12 @@ TextNodeEditor.Prototype = function() {
   };
 
   this.canInsertContent = function(session, component, charPos) {
-    var N = component.node.content.length;
+    var N = component.root.content.length;
     return charPos <= N;
   };
 
   this.insertContent = function(session, component, charPos, text) {
-    var node = component.node;
+    var node = component.root;
     var diffOp = TextOperation.Insert(charPos, text);
     var op = ObjectOperation.Update([node.id, "content"], diffOp, "string");
     session.document.apply(op);
@@ -42,7 +42,7 @@ TextNodeEditor.Prototype = function() {
     return true;
   };
   this.annotate = function(session, component, type, range, data) {
-    var node = component.node;
+    var node = component.root;
     var path = [node.id, "content"];
     session.document.annotate({
       type: type,
@@ -52,15 +52,15 @@ TextNodeEditor.Prototype = function() {
   };
 
   this.canBreak = function(session, component, charPos) {
-    var N = component.node.content.length;
+    var N = component.root.content.length;
     return charPos <= N;
   };
 
   this.breakNode = function(session, component, charPos) {
-    var node = component.node;
+    var node = component.root;
     var text = node.content;
     var tail = text.substring(charPos);
-    var nodePos = component.nodePos;
+    var nodePos = component.rootPos;
 
     var newNode = {
       id: util.uuid(),
