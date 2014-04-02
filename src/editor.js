@@ -296,23 +296,21 @@ var Editor = function(docCtrl, renderer, options) {
 
   this.activate = function() {
     editorCtrl.session.selection.on("selection:changed", onSelectionChanged);
-
-    // this.listenTo(editorCtrl.session.selection,  "selection:changed", onSelectionChanged);
     el.addEventListener("textInput", this.onTextInput, true);
     el.addEventListener("input", this.onTextInput, true);
-    $el.mouseup(_onMouseup);
+    el.addEventListener("mouseup", _onMouseup, true);
     _mutationObserver.observe(self.el, _mutationObserverConfig);
     keyboard.connect(el);
     el.setAttribute("contenteditable", "true");
   };
 
   this.deactivate = function() {
-    // this.off("selection:changed");
-    editorCtrl.session.selection.off("selection:changed");
+    editorCtrl.session.selection.off("selection:changed", onSelectionChanged);
     el.removeEventListener("textInput", this.onTextInput, true);
     el.removeEventListener("input", this.onTextInput, true);
-    $el.off('mouseup');
+    el.removeEventListener("mouseup", _onMouseup, true);
     _mutationObserver.disconnect();
+
     keyboard.disconnect();
     el.setAttribute("contenteditable", "true");
   };
