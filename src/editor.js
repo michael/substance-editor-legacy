@@ -180,18 +180,20 @@ var Editor = function(docCtrl, renderer, options) {
     editorCtrl.toggleAnnotation("emphasis");
   }));
 
-  // EXPERIMENTAL hooks for creating new node and annotation types
+  keyboard.bind("text", "keydown", _manipulate(function() {
+    editorCtrl.changeType("text");
+  }));
 
   keyboard.bind("heading", "keydown", _manipulate(function() {
-    editorCtrl.insertNode("heading", {"level": 1});
+    editorCtrl.changeType("heading", {"level": 1});
   }));
 
   keyboard.bind("codeblock", "keydown", _manipulate(function() {
-    editorCtrl.insertNode("codeblock");
+    editorCtrl.changeType("codeblock");
   }));
 
   keyboard.bind("list", "keydown", _manipulate(function() {
-    editorCtrl.insertList();
+    editorCtrl.changeType("list_item", {"level": 1});
   }));
 
   keyboard.setDefaultHandler("keypress", _manipulate(function(e) {
