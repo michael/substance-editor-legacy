@@ -214,6 +214,25 @@ EditorController.Prototype = function() {
     _afterEdit(this);
   };
 
+
+  this.toggleAnnotation = function(type, data) {
+    var annos = this.session.annotator.getAnnotations(this.session.selection);
+    var anno = null;
+    for(var id in annos) {
+      if (annos.hasOwnProperty(id)) {
+        if (annos[id].type === type) {
+          anno = annos[id];
+          break;
+        }
+      }
+    }
+    if (!anno) {
+      this.annotate(type, data);
+    } else {
+      this.deleteAnnotation(anno.id);
+    }
+  };
+
   // This deactivates an annotation
   // ----
   // To allow easy toggling back we will set the selection
@@ -230,6 +249,8 @@ EditorController.Prototype = function() {
       start: [component.pos, annotation.range[0]],
       end:   [component.pos, annotation.range[1]]
     });
+
+    _afterEdit(this);
   };
 
   // TODO: from where is this called? seems a bit clumsy...
@@ -519,7 +540,6 @@ EditorController.Prototype = function() {
 
     session.selection.set(selRange);
   };
-
 
   var _afterEdit = function(self) {
     var doc = self.session.document;

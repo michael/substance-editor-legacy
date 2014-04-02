@@ -173,11 +173,11 @@ var Editor = function(docCtrl, renderer, options) {
   }));
 
   keyboard.bind("strong", "keydown", _manipulate(function() {
-    editorCtrl.annotate("strong");
+    editorCtrl.toggleAnnotation("strong");
   }));
 
   keyboard.bind("emphasis", "keydown", _manipulate(function() {
-    editorCtrl.annotate("emphasis");
+    editorCtrl.toggleAnnotation("emphasis");
   }));
 
   // EXPERIMENTAL hooks for creating new node and annotation types
