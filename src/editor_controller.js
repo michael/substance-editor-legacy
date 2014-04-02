@@ -366,36 +366,6 @@ EditorController.Prototype = function() {
     }
   };
 
-  this.insertList = function() {
-    var selection = this.session.selection;
-    if (selection.isNull()) {
-      throw new Error("Selection is null!");
-    }
-
-    var session = this.session.startSimulation();
-
-    var listItem = {
-      type: "list_item",
-      id: "list_item_"+util.uuid(),
-      level: 1,
-      content: ""
-    };
-
-    session.document.create(listItem);
-
-    var list = {
-      type: "list",
-      id: "list_"+util.uuid(),
-      items: [listItem.id]
-    };
-
-    if (_insertNode(this, session, list)) {
-      session.save();
-      this.session.selection.set(session.selection);
-      _afterEdit(this);
-    }
-  };
-
   this.changeType = function(newType, data) {
     // console.log("EditorController.changeType()", newType, data);
     var selection = this.session.selection;
