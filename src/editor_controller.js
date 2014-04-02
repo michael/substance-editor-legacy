@@ -392,6 +392,9 @@ EditorController.Prototype = function() {
     session.save();
 
     this.session.selection.set(selection);
+
+    this.ensureLastNode(session);
+
     _afterEdit(this);
   };
 
@@ -445,6 +448,8 @@ EditorController.Prototype = function() {
         sel.set([components[0].pos, 0]);
       }
 
+      self.ensureLastNode(session);
+
       return true;
   };
 
@@ -493,6 +498,10 @@ EditorController.Prototype = function() {
     }
   };
 
+  this.ensureLastNode = function(session) {
+    var viewEditor = _getEditor(this, {type: "view", id: session.container.name});
+    viewEditor.ensureLastNode(session);
+  };
 
   // Private functions
   // ........
@@ -621,6 +630,9 @@ EditorController.Prototype = function() {
     }
 
     sel.set(newPos);
+
+    self.ensureLastNode(session);
+
     return success;
   };
 
