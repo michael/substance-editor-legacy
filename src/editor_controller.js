@@ -389,11 +389,11 @@ EditorController.Prototype = function() {
     }
 
     editor.changeType(session, node, component, newType, data);
+
+    this.ensureLastNode(session);
     session.save();
 
     this.session.selection.set(selection);
-
-    this.ensureLastNode(session);
 
     _afterEdit(this);
   };
