@@ -500,7 +500,7 @@ EditorController.Prototype = function() {
 
   this.ensureLastNode = function(session) {
     var viewEditor = _getEditor(this, {type: "view", id: session.container.name});
-    viewEditor.ensureLastNode(session);
+    if (viewEditor.ensureLastNode) viewEditor.ensureLastNode(session);
   };
 
   // Private functions
