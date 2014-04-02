@@ -195,6 +195,10 @@ EditorController.Prototype = function() {
     if (selection.hasMultipleNodes()) {
       throw new Error("Can only annotate within a single node/component.");
     }
+    if (selection.isCollapsed()) {
+      // nothing to do
+      return;
+    }
 
     var session = this.session.startSimulation();
 
