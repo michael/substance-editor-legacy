@@ -304,9 +304,9 @@ EditorController.Prototype = function() {
   this.createCitation = function() {
     var doc = this.session.document;
     var node = doc.create({
-      id: "webpage_"+util.uuid(),
-      type: "webpage",
-      url: "http://example.com"
+      id: "webresource_"+util.uuid(),
+      type: "webresource",
+      url: "http://"
     });
 
     this.document.show("citations", [node.id]);
