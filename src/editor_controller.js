@@ -398,6 +398,27 @@ EditorController.Prototype = function() {
     _afterEdit(this);
   };
 
+  this.select = function(mode) {
+    var selection = this.session.selection;
+    if (selection.isNull()) {
+      console.error("Nothing selected.");
+      return;
+    }
+
+    var container = this.session.container;
+    var pos = selection.cursor.pos;
+    var component = container.getComponent(pos);
+
+    if (mode === "all") {
+      var components = container.getNodeComponents(component.root.id);
+      var first = components[0];
+      var last = components[components.length-1];
+      selection.set({start: [first.pos, 0], end: [last.pos, last.length]});
+    } else {
+      console.error("Unsupported selection mode:", mode);
+    }
+  };
+
   var _insertNode = function(self, session, newNode) {
       var sel = session.selection;
 

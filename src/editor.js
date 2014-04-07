@@ -179,6 +179,10 @@ Editor.Prototype = function() {
       editorCtrl.redo();
     }));
 
+    keyboard.bind("select-all", "keydown", _manipulate(function() {
+      editorCtrl.select("all");
+    }));
+
     keyboard.bind("strong", "keydown", _manipulate(function() {
       editorCtrl.toggleAnnotation("strong");
     }));
