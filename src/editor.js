@@ -131,16 +131,6 @@ Editor.Prototype = function() {
 
     // Key-bindings
     // --------
-    keyboard.pass("selection");
-    keyboard.bind("selection", "keydown", function() {
-      // Note: this is essential for the 'collaboration' with contenteditable
-      // Whenever the selection is changed due to keyboard input
-      // we just register an update which will be executed after
-      // the contenteditable has processed the key.
-      window.setTimeout(function() {
-        self.updateSelection();
-      });
-    });
 
     // they are handled on a higher level
     keyboard.pass("copy");
@@ -256,9 +246,9 @@ Editor.Prototype = function() {
   // ATM, a window selection change, e.g., when moving the cursor,
   // triggers a model selection update, which in turn triggers a window selection update.
   // The latter would not be necessary in most cases.
-  this.onModelSelectionChanged = function() {
+  this.onModelSelectionChanged = function(range, options) {
     // Note: this method implements a try-catch guard triggering an error event
-    this.renderSelection.apply(this, arguments);
+    this.renderSelection(range, options);
   };
 
   // Initialization
