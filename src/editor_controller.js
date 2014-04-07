@@ -304,8 +304,8 @@ EditorController.Prototype = function() {
   this.createCitation = function() {
     var doc = this.session.document;
     var node = doc.create({
-      id: "webresource_"+util.uuid(),
-      type: "webresource",
+      id: "web_resource_"+util.uuid(),
+      type: "web_resource",
       url: "http://"
     });
 
@@ -480,7 +480,7 @@ EditorController.Prototype = function() {
     },
     {
       action: "createNode",
-      type: "codeblock",
+      type: "code_block",
       data: {
       }
     }

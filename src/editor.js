@@ -195,8 +195,8 @@ Editor.Prototype = function() {
       editorCtrl.changeType("heading", {"level": 1});
     }));
 
-    keyboard.bind("codeblock", "keydown", _manipulate(function() {
-      editorCtrl.changeType("codeblock");
+    keyboard.bind("code_block", "keydown", _manipulate(function() {
+      editorCtrl.changeType("code_block");
     }));
 
     keyboard.bind("list", "keydown", _manipulate(function() {
