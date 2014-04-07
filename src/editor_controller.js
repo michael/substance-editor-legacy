@@ -651,6 +651,7 @@ EditorController.Prototype = function() {
     }
 
     editor.deleteContent(session, component, startChar, endChar);
+
     return true;
   };
 
@@ -684,7 +685,16 @@ EditorController.Prototype = function() {
       var lastIdx = firstIdx + nodeComponents.length - 1;
 
       // if it is a full selection schedule a command to delete the node
-      if (lastIdx < ranges.length && r.isFull() && ranges[lastIdx].isFull()) {
+      var isFull = r.isFull() && ranges[lastIdx].isFull();
+
+      // HACK: if the last is an empty node it will show always as fully selected
+      // However, in that case it should remain only if the first one is fully selected.
+      // TODO: rename Range.length() to Range.getLength() or add a property getter
+      if (i === ranges.length-1 && ranges[lastIdx].length() === 0 && ranges[0].isFull()) {
+        isFull = false;
+      }
+
+      if (lastIdx < ranges.length && isFull) {
         editor = viewEditor;
         canDelete = editor.canDeleteNode(session, node);
         cmds.push({type: "node", editor: editor, range: r});
