@@ -105,6 +105,7 @@ BasicEditor.Prototype = function() {
     var editorCtrl = this.editorCtrl;
 
     this._onModelSelectionChanged = this.onModelSelectionChanged.bind(this);
+    this._onTextInput = this.onTextInput.bind(this);
 
     // HACK: to be able to handler deadkeys correctly we need still a DOMMutationObserver
     // A contenteditable suppresses keydown events for deadkeys.
@@ -261,8 +262,8 @@ BasicEditor.Prototype = function() {
   this.activate = function() {
     var el = this.el;
     this.editorCtrl.session.selection.on("selection:changed", this._onModelSelectionChanged);
-    el.addEventListener("textInput", this.onTextInput, true);
-    el.addEventListener("input", this.onTextInput, true);
+    el.addEventListener("textInput", this._onTextInput, true);
+    el.addEventListener("input", this._onTextInput, true);
     var _mutationObserverConfig = { subtree: true, characterData: true, characterDataOldValue: true };
     this._mutationObserver.observe(el, _mutationObserverConfig);
     this.keyboard.connect(el);
@@ -272,8 +273,8 @@ BasicEditor.Prototype = function() {
   this.deactivate = function() {
     var el = this.el;
     this.editorCtrl.session.selection.off("selection:changed", this._onModelSelectionChanged);
-    el.removeEventListener("textInput", this.onTextInput, true);
-    el.removeEventListener("input", this.onTextInput, true);
+    el.removeEventListener("textInput", this._onTextInput, true);
+    el.removeEventListener("input", this._onTextInput, true);
     this._mutationObserver.disconnect();
     this.keyboard.disconnect();
     el.setAttribute("contenteditable", "true");
