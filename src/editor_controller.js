@@ -330,9 +330,7 @@ EditorController.Prototype = function() {
     var figure = {
       type: "figure",
       id: "figure_"+util.uuid(),
-      url: "",
       image: "",
-      label: "Figure ",
       caption: caption.id
     };
 
