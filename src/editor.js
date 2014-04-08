@@ -81,7 +81,7 @@ Editor.Prototype = function() {
       self.updateSelection(e);
     });
 
-    e.preventDefault();
+    e.stopPropagation();
   };
 
   // API for handling keyboard input
