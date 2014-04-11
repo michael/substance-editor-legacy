@@ -417,6 +417,10 @@ EditorController.Prototype = function() {
     }
   };
 
+  this.focus = function() {
+    this.session.selection.set(this.session.selection);
+  };
+
   var _insertNode = function(self, session, newNode) {
       var sel = session.selection;
 
