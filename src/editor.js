@@ -57,7 +57,6 @@ Editor.Prototype = function() {
   // var _ignoreNextSelection = false;
 
   this.onMousedown = function(e) {
-    console.log("Editor.onMousedown", Date.now());
     if (e.target.isContentEditable) {
       this.__selecting = true;
     }
@@ -68,9 +67,7 @@ Editor.Prototype = function() {
       return;
     }
     this.__selecting = false;
-
     var self = this;
-    console.log("Editor.onMouseup", Date.now());
 
     // NOTE: this is important to let the content-editable
     // do the window selection update first
