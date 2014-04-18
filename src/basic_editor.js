@@ -138,6 +138,11 @@ BasicEditor.Prototype = function() {
     keyboard.pass("cut");
     keyboard.pass("paste");
 
+    keyboard.bind("nop", "keydown", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
     // Note: these stupid 'surface.manipulate' stuff is currently necessary
     // as I could not find another way to distinguish the cases for regular text input
     // and multi-char input. It would not be necessary, if we had a robust way
