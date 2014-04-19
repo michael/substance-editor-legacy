@@ -97,7 +97,7 @@ Editor.Prototype = function() {
 
   this.activate = function() {
     __super__.activate.call(this);
-    console.log("Activating...");
+    // console.log("Activating...");
     var el = this.el;
     el.addEventListener("mousedown", this._onMousedown, true);
     window.document.addEventListener("mouseup", this._onMouseup, true);
