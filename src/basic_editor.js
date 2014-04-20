@@ -229,7 +229,13 @@ BasicEditor.Prototype = function() {
       //console.log("BasicEditor keydown", e, keyboard.describeEvent(e));
       // TODO: detect all multi-char inputs, and remember that information
       // to augment the next keypressed character
-      if (e.keyCode === 229 || e.keyCode === 192) {
+
+      // NOTE: very strange: OSX has 192 of '°', Windows for 'ö'
+      // if (e.keyCode === 192) {
+      //   console.log("Welcome to keycode hell", e);
+      // }
+
+      if (e.keyCode === 229) {
         e.preventDefault();
         e.stopPropagation();
       }
