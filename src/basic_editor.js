@@ -27,6 +27,8 @@ var BasicEditor = function(docCtrl, renderer, options) {
   this.editorCtrl = docCtrl;
   this.el.spellcheck = false;
 
+  this._hasDeadKey = false;
+
   this._initEditor();
   this.activate();
 };
@@ -59,30 +61,22 @@ BasicEditor.Prototype = function() {
     //console.log("BasicEditor onTextInput", e);
     var text = e.data;
 
-    if (!text && this._domChanges.length > 0) {
-      var change = this._domChanges[0];
-      var diffLength = change.value.length - change.oldValue.length;
-      if (diffLength !== 1) {
-        console.error("ASSERT: this code assumes that there is a difference of one character.");
-        return;
-      }
-      text = inserted_character(change.value, change.oldValue);
-
-      // HACK: the contenteditable when showing the character selection popup
-      // will change the selection to the previously inserted char... magically
-      // We transfer the selection to the model and then write the text input.
-      window.setTimeout(function() {
-        try {
-          // reset the element to the change before the DOM polution
-          change.el.textContent = change.oldValue;
-          self.editorCtrl.write(text);
-        } catch (err) {
-          self.editorCtrl.trigger("error", err);
-        }
-      }, 0);
+    if (!e.data && self._hasDeadKey) {
+      // skip
+      // console.log("_hasDeadKey", e, self._domChanges);
+      return;
     }
 
     else if (e.data) {
+      if (self._hasDeadKey) {
+        self._hasDeadKey = false;
+        // console.log("#####", self._domChanges);
+        var change = self._domChanges[self._domChanges.length-1];
+        change.el.textContent = change.oldValue;
+        self.renderSelection();
+        self._domChanges = [];
+      }
+
       window.setTimeout(function() {
         try {
           self.updateSelection();
@@ -90,6 +84,7 @@ BasicEditor.Prototype = function() {
         } catch (err) {
           self.editorCtrl.trigger("error", err);
         }
+        self._domChanges = [];
       }, 0);
     }
 
@@ -213,17 +208,29 @@ BasicEditor.Prototype = function() {
       editorCtrl.changeType("list_item", {"level": 1});
     }));
 
-    keyboard.setDefaultHandler("keypress", _manipulate(function(e) {
-      //console.log("BasicEditor keypress", e, keyboard.describeEvent(e));
+    keyboard.setDefaultHandler("keypress", function(e) {
+      // console.log("BasicEditor keypress", e, keyboard.describeEvent(e));
       editorCtrl.write(String.fromCharCode(e.which));
-    }));
+      e.preventDefault();
+      e.stopPropagation();
+    });
 
     keyboard.setDefaultHandler("keyup", function(e) {
-      //console.log("BasicEditor keyup", e, keyboard.describeEvent(e));
+      // console.log("BasicEditor keyup", e, keyboard.describeEvent(e));
       e.preventDefault();
       e.stopPropagation();
       self._domChanges = [];
     });
+
+    if (window.navigator.platform.toLowerCase().search("win32") >= 0 ||
+        window.navigator.platform.toLowerCase().search("linux") >= 0 ||
+        (typeof process !== "undefined" && process.platform !== 'darwin')) {
+    } else {
+      keyboard.bind("special", "keydown", function(e) {
+        // console.log("...special", e);
+        self._hasDeadKey = true;
+      });
+    }
 
     keyboard.setDefaultHandler("keydown", function(e) {
       //console.log("BasicEditor keydown", e, keyboard.describeEvent(e));
