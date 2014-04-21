@@ -222,15 +222,10 @@ BasicEditor.Prototype = function() {
       self._domChanges = [];
     });
 
-    if (window.navigator.platform.toLowerCase().search("win32") >= 0 ||
-        window.navigator.platform.toLowerCase().search("linux") >= 0 ||
-        (typeof process !== "undefined" && process.platform !== 'darwin')) {
-    } else {
-      keyboard.bind("special", "keydown", function(e) {
-        // console.log("...special", e);
-        self._hasDeadKey = true;
-      });
-    }
+    keyboard.bind("special", "keydown", function(e) {
+      // console.log("...special", e);
+      self._hasDeadKey = true;
+    });
 
     keyboard.setDefaultHandler("keydown", function(e) {
       //console.log("BasicEditor keydown", e, keyboard.describeEvent(e));
