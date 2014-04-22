@@ -107,7 +107,9 @@ EditorController.Prototype = function() {
   // Headings and List items can change the level. Text nodes insert a certain amount of spaces.
   //
   // Arguments:
-  ///  - `direction`: `right` or `left` (default: `right`)
+  //  - `direction`: `right` or `left` (default: `right`)
+  //
+
   this.indent = function(direction) {
     var selection = this.session.selection;
     if (selection.isNull()) {
@@ -143,15 +145,34 @@ EditorController.Prototype = function() {
   // Copy the current selection
   // --------
   //
+  // Returns the cutted content as a new document
 
   this.copy = function() {
-    console.log("I am sorry. Currently disabled.");
+    var selection = this.session.selection;
+
+    if (selection.isNull()) {
+      return null;
+    }
+
+    var nodeSelections = selection.getNodeSelections();
+    var content = this.session.document.newInstance();
+    var editor;
+
+    for (var i = 0; i < nodeSelections.length; i++) {
+      var nodeSelection = nodeSelections[i];
+      editor = _getEditor(this, nodeSelection.node);
+      // do not copy empty nodes
+      if (nodeSelection.ranges.length > 0 && nodeSelection.ranges[0].getLength() > 0) {
+        editor.copy(nodeSelection, content);
+      }
+    }
+
+    return content;
   };
 
   // Cut current selection from document
   // --------
   //
-  // Returns cutted content as a new Substance.Document
 
   this.cut = function() {
     console.log("I am sorry. Currently disabled.");
@@ -161,8 +182,82 @@ EditorController.Prototype = function() {
   // --------
   //
 
-  this.paste = function() {
-    console.log("I am sorry. Currently disabled.");
+  this.paste = function(content, plainText) {
+    if (this.session.selection.isNull()) {
+      console.error("Can not paste, as no position has been selected.");
+      return;
+    }
+
+    var session = this.session.startSimulation();
+    var doc = session.document;
+    var container = session.container;
+    var selection = session.selection;
+
+    // it is rather tricky to specify when to break and join after paste
+    // TODO: specify several usecases and design the implementation
+
+    // For now a rather stupid version (no joining)
+
+    // TODO: what to do with nodes that implement a soft-break instead of a break?
+    // E.g., CodeBlock, ListItem?
+    if (!selection.isCollapsed()) {
+      if (!_deleteSelection(this, session)) {
+        console.log("Could not delete the selected content");
+        return false;
+      }
+    }
+
+    // if we can't break at the current position we fall back to plain text
+    var beforePos = session.selection.cursor.pos;
+    var beforeCharPos = session.selection.cursor.charPos;
+    if (!_breakNode(this, session)) {
+      if (!_write(this, session, plainText)) {
+        console.error("Can not paste at the given position.");
+        return;
+      } else {
+        selection.set([beforePos, beforeCharPos + plainText.length]);
+        session.save();
+        this.selection.set(selection);
+        return;
+      }
+    }
+
+    // pruning empty nodes created by the _breakNode above
+    // TODO: IMO it is not possible to implement this in a generalized way
+    // Instead the node editors should be involved in that.
+    var afterPos = selection.cursor.pos;
+    var insertPos = afterPos;
+    var after = container.getComponent(afterPos);
+    if (after.length === 0) {
+      doc.hide(container.name, after.root.id);
+      doc.delete(after.root.id);
+    }
+    var before = container.getComponent(beforePos);
+    if (before.length === 0) {
+      doc.hide(container.name, before.root.id);
+      doc.delete(before.root.id);
+      insertPos--;
+    }
+
+
+    // transfer nodes from content document
+    // TODO: transfer annotations
+    var nodeIds = content.get("content").nodes;
+    for (var i = 0; i < nodeIds.length; i++) {
+      var nodeId = nodeIds[i];
+      var node = content.get(nodeId).toJSON();
+      // create a new id if the node exists already
+      if (doc.get(nodeId)) {
+        node.id = util.uuid(node.type);
+      }
+      doc.create(node);
+      doc.show(container.name, node.id, insertPos++);
+    }
+    var last = container.getComponent(insertPos-1);
+    selection.set([last.pos, last.length]);
+
+    session.save();
+    this.session.selection.set(selection);
   };
 
   this.undo = function() {
