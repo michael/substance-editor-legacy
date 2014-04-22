@@ -684,80 +684,84 @@ EditorController.Prototype = function() {
   // otherwise the node must support partial deletion.
   // TODO: try to stream-line this implementation.
   var _deleteMulti = function(self, session) {
-    var ranges = session.selection.getRanges();
     var container = session.container;
 
-    var i, r, node;
+    var i, r, node, nodeSelection;
     // collect information about deletions during the check
     var cmds = [];
     var viewEditor = _getEditor(self, {type: "view", id: container.name});
 
+    var nodeSelections = session.selection.getNodeSelections();
+    var first = nodeSelections[0];
+    var last = nodeSelections[nodeSelections.length-1];
+
     // Preparation: check that all deletions can be applied and
     // prepare commands for an easy deletion
-    for (i = 0; i < ranges.length; i++) {
-      r = ranges[i];
-      node = r.component.root;
+    for (i = 0; i < nodeSelections.length; i++) {
+      nodeSelection = nodeSelections[i];
+      node = nodeSelection.node;
       var canDelete;
       var editor;
 
-      // Note: this checks if a node is fully selected via a heuristic:
-      // if the selection has enough components to cover the full node and the first and last components
-      // are fully selected, then the node is considered as fully selected.
-      var nodeComponents = container.getNodeComponents(node.id);
-      var firstIdx = i;
-      var lastIdx = firstIdx + nodeComponents.length - 1;
 
       // if it is a full selection schedule a command to delete the node
-      var isFull = r.isFull() && ranges[lastIdx].isFull();
+      var isFull = nodeSelection.isFull();
 
       // HACK: if the last is an empty node it will show always as fully selected
-      // However, in that case it should remain only if the first one is fully selected.
-      // TODO: rename Range.length() to Range.getLength() or add a property getter
-      if (i === ranges.length-1 && ranges[lastIdx].length() === 0 && ranges[0].isFull()) {
+      // In that case it should remain only if the first one is fully selected.
+      if (isFull && nodeSelection === last && first.isFull() &&
+          nodeSelection.ranges.length === 1 &&
+          nodeSelection.ranges[0].component.length === 0) {
         isFull = false;
       }
 
-      if (lastIdx < ranges.length && isFull) {
+      if (isFull) {
         editor = viewEditor;
         canDelete = editor.canDeleteNode(session, node);
-        cmds.push({type: "node", editor: editor, range: r});
-      }
-      // ... otherwise schedule a command for trimming the node.
-      else {
-        editor = _getEditor(self, node);
-        for (var j=firstIdx; j<=lastIdx; j++) {
-          r = ranges[j];
-          canDelete = editor.canDeleteContent(session, r.component, r.start, r.end);
-          cmds.push({type: "content", editor: editor, range: r});
+        cmds.push({type: "node", editor: editor, node: node});
+
+        if (!canDelete) {
+          // TODO: we need add a mechanism to provide a feedback about that, e.g., so that the UI can display some
+          // kind of messsage
+          console.log("Can't delete node:", node);
+          return false;
         }
       }
+      // otherwise schedule a command for trimming the node for each of the
+      // node's component.
+      else {
+        editor = _getEditor(self, node);
 
-      i = lastIdx;
+        for (var j=0; j<nodeSelection.ranges.length; j++) {
+          r = nodeSelection.ranges[j];
+          canDelete = editor.canDeleteContent(session, r.component, r.start, r.end);
+          cmds.push({type: "content", editor: editor, range: r});
 
-      // TODO: we need add a mechanism to provide a feedback about that, e.g., so that the UI can display some
-      // kind of messsage
-      if (!canDelete) {
-        console.log("Can't delete component:", r.component);
-        return false;
+          if (!canDelete) {
+            console.log("Can't delete component:", r.component);
+            return false;
+          }
+        }
       }
     }
 
     // If the first and the last selected node have been partially selected
     // then we will try to join these nodes
-    var doJoin = (ranges.length > 0 && ranges[0].isPartial() && ranges[ranges.length-1].isPartial());
+    var doJoin = (first && first.isPartial() &&
+                  last && last.isPartial());
 
     // Perform the deletions
 
     // ATTENTION: we have to perform the deletions in inverse order so that the node positions remain valid
     for (i = cmds.length - 1; i >= 0; i--) {
-      var c = cmds[i];
-      r = c.range;
+      var cmd = cmds[i];
 
-      if (c.type === "content") {
-        c.editor.deleteContent(session, r.component, r.start, r.end);
+      if (cmd.type === "content") {
+        r = cmd.range;
+        cmd.editor.deleteContent(session, r.component, r.start, r.end);
       } else {
-        node = r.component.root;
-        c.editor.deleteNode(session, node);
+        node = cmd.node;
+        cmd.editor.deleteNode(session, node);
         // TODO: in theory it might be possible that nodes are referenced somewhere else
         // however, we do not yet consider such situations and delete the node instantly
         session.document.delete(node.id);
@@ -768,10 +772,7 @@ EditorController.Prototype = function() {
 
     // Perform a join
     if (doJoin) {
-      // Retrieve updated components
-      var first = ranges[0].component.root;
-      var second = ranges[ranges.length-1].component.root;
-      _join(self, session, first, second);
+      _join(self, session, first.node, last.node);
     }
 
     return true;
