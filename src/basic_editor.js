@@ -18,8 +18,12 @@ if (!window.MutationObserver) {
 // --------
 // Don't look too close at this code. It is ugly. Yes. It is.
 
+var __id__ = 0;
+
 var BasicEditor = function(docCtrl, renderer, options) {
   Surface.call(this, docCtrl, renderer);
+
+  this.__id__ = __id__++;
 
   options = options || {};
   var keymap = options.keymap || BasicEditor._getDefaultKeyMap();
@@ -27,6 +31,12 @@ var BasicEditor = function(docCtrl, renderer, options) {
   this.editorCtrl = docCtrl;
   this.el.spellcheck = false;
 
+  // to be able to handle deadkeys correctly we need a DOMMutationObserver
+  // that allows us to revert DOM pollution done by contenteditable.
+  // It is not possible to implement deadkey ourselves. When we stop propagation of keypress
+  // for deadkeys we do not receive text input or even a keyup
+  // (which would contain the actual keycode of the deadkey)
+  this._domChanges = [];
   this._hasDeadKey = false;
 
   this._initEditor();
@@ -46,13 +56,11 @@ BasicEditor.Prototype = function() {
     this.deactivate();
   };
 
-  // computes a trivial diff based on the assumption that only one character has been inserted
-  var inserted_character = function(val, oldVal) {
-    var pos;
-    for (pos = 0; pos < oldVal.length; pos++) {
-      if (oldVal[pos] !== val[pos]) break;
-    }
-    return val[pos];
+  this.revertDOMChanges = function() {
+    // console.log("Reverting DOM changes...", this._domChanges);
+    var change = this._domChanges[0];
+    change.el.textContent = change.oldValue;
+    this._domChanges = [];
   };
 
   this.onTextInput = function(e) {
@@ -63,29 +71,31 @@ BasicEditor.Prototype = function() {
 
     if (!e.data && self._hasDeadKey) {
       // skip
-      // console.log("_hasDeadKey", e, self._domChanges);
+      // console.log("skipping _hasDeadKey", e, self._domChanges);
       return;
     }
 
     else if (e.data) {
       if (self._hasDeadKey) {
+        // console.log("(", self.__id__, ") Handling deadkey", self._domChanges);
         self._hasDeadKey = false;
-        // console.log("#####", self._domChanges);
-        var change = self._domChanges[self._domChanges.length-1];
-        change.el.textContent = change.oldValue;
+        self.revertDOMChanges();
         self.renderSelection();
-        self._domChanges = [];
       }
 
-      window.setTimeout(function() {
+      // console.log("(", self.__id__, ") TextInput", text);
+      // NOTE: this timeout brought problems with handling
+      // deadkeys together with other cancelling input (e.g., backspace, return)
+      // window.setTimeout(function() {
         try {
           self.updateSelection();
           self.editorCtrl.write(text);
         } catch (err) {
           self.editorCtrl.trigger("error", err);
         }
+        // make sure there are no dom changes from this manipulation
         self._domChanges = [];
-      }, 0);
+      // }, 0);
     }
 
     self._domChanges = [];
@@ -101,16 +111,6 @@ BasicEditor.Prototype = function() {
 
     this._onModelSelectionChanged = this.onModelSelectionChanged.bind(this);
     this._onTextInput = this.onTextInput.bind(this);
-
-    // HACK: to be able to handler deadkeys correctly we need still a DOMMutationObserver
-    // A contenteditable suppresses keydown events for deadkeys.
-    // This would be only way to prevent the browser from changing the DOM.
-    // Thus, we need to revert changes done by the model...
-    // Ideally, the browser could be prevented from changing the DOM. However, this is just under discussion with Robin Berjon from W§C.
-    // Another solution would be to suppress updates. This would need an adaption
-    // to operations allowing to have volatile data for application purpose. (not so easy to achieve)
-    this._domChanges = [];
-
 
     var _manipulate = function(action) {
       return function(e) {
@@ -223,27 +223,19 @@ BasicEditor.Prototype = function() {
     });
 
     keyboard.bind("special", "keydown", function(e) {
-      // console.log("...special", e);
-      self._hasDeadKey = true;
-    });
-
-    keyboard.setDefaultHandler("keydown", function(e) {
-      //console.log("BasicEditor keydown", e, keyboard.describeEvent(e));
-      // TODO: detect all multi-char inputs, and remember that information
-      // to augment the next keypressed character
-
-      // NOTE: very strange: OSX has 192 of '°', Windows for 'ö'
-      // if (e.keyCode === 192) {
-      //   console.log("Welcome to keycode hell", e);
-      // }
-
-      if (e.keyCode === 229) {
-        e.preventDefault();
-        e.stopPropagation();
+      // Note: this gets called twice: once for the deadkey and a second time
+      // for the associated character
+      if (!self._hasDeadKey) {
+        // console.log("...special", e);
+        self._hasDeadKey = true;
+        self._domChanges = [];
       }
     });
 
     this._mutationObserver = new MutationObserver(function(mutations) {
+      if (!self._hasDeadKey) {
+        return;
+      }
       mutations.forEach(function(mutation) {
         var entry = {
           mutation: mutation,
