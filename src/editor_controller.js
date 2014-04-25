@@ -561,10 +561,10 @@ EditorController.Prototype = function() {
       //EXPERIMENTAL: Set the cursor into the node
       // TODO: evaluate if it is a good approach to set the cursor into
       // the first component at position 0.
-      var components = session.container.getNodeComponents(newNode.id);
-      if (components.length > 0) {
-        sel.set([components[0].pos, 0]);
-      }
+      // var components = session.container.getNodeComponents(newNode.id);
+      // if (components.length > 0) {
+      //   sel.set([components[components.length-1].pos+1, 0]);
+      // }
 
       self.ensureLastNode(session);
 
