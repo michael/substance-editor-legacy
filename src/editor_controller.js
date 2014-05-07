@@ -226,8 +226,9 @@ EditorController.Prototype = function() {
     // TODO: IMO it is not possible to implement this in a generalized way
     // Instead the node editors should be involved in that.
     var afterPos = selection.cursor.pos;
-    var insertPos = afterPos;
     var after = container.getComponent(afterPos);
+    // Attention: for inserting we need the node position (in contrast to component position)
+    var insertPos = after.rootPos;
     if (after.length === 0) {
       doc.hide(container.name, after.root.id);
       doc.delete(after.root.id);
