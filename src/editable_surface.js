@@ -14,19 +14,19 @@ if (!window.MutationObserver) {
   MutationObserver = window.MutationObserver;
 }
 
-// The BasicEditor is an editable Surface
+// The EditableSurface is an editable Surface
 // --------
 // Don't look too close at this code. It is ugly. Yes. It is.
 
 var __id__ = 0;
 
-var BasicEditor = function(docCtrl, renderer, options) {
+var EditableSurface = function(docCtrl, renderer, options) {
   Surface.call(this, docCtrl, renderer);
 
   this.__id__ = __id__++;
 
   options = options || {};
-  var keymap = options.keymap || BasicEditor._getDefaultKeyMap();
+  var keymap = options.keymap || EditableSurface._getDefaultKeyMap();
   this.keyboard = new Keyboard(keymap);
   this.editorCtrl = docCtrl;
   this.el.spellcheck = false;
@@ -43,7 +43,7 @@ var BasicEditor = function(docCtrl, renderer, options) {
   this.activate();
 };
 
-BasicEditor.Prototype = function() {
+EditableSurface.Prototype = function() {
 
   // Override the dispose method to bind extra disposing stuff
   // --------
@@ -66,7 +66,7 @@ BasicEditor.Prototype = function() {
   this.onTextInput = function(e) {
     var self = this;
 
-    //console.log("BasicEditor onTextInput", e);
+    //console.log("EditableSurface onTextInput", e);
     var text = e.data;
 
     if (!e.data && self._hasDeadKey) {
@@ -117,7 +117,7 @@ BasicEditor.Prototype = function() {
         try {
           action.call(self, e);
         } catch (err) {
-          console.log("BasicEditor: triggering error", err);
+          console.log("EditableSurface: triggering error", err);
           editorCtrl.trigger("error", err);
         }
         e.preventDefault();
@@ -209,14 +209,14 @@ BasicEditor.Prototype = function() {
     }));
 
     keyboard.setDefaultHandler("keypress", function(e) {
-      // console.log("BasicEditor keypress", e, keyboard.describeEvent(e));
+      // console.log("EditableSurface keypress", e, keyboard.describeEvent(e));
       editorCtrl.write(String.fromCharCode(e.which));
       e.preventDefault();
       e.stopPropagation();
     });
 
     keyboard.setDefaultHandler("keyup", function(e) {
-      // console.log("BasicEditor keyup", e, keyboard.describeEvent(e));
+      // console.log("EditableSurface keyup", e, keyboard.describeEvent(e));
       e.preventDefault();
       e.stopPropagation();
       self._domChanges = [];
@@ -248,6 +248,48 @@ BasicEditor.Prototype = function() {
       });
     });
 
+
+    // Handle selection changes
+    // -------
+
+    this._onMouseup = this.onMouseup.bind(this);
+    this._onMousedown = this.onMousedown.bind(this);
+
+    keyboard.pass("selection");
+    keyboard.bind("selection", "keydown", function() {
+      // Note: this is essential for the 'collaboration' with contenteditable
+      // Whenever the selection is changed due to keyboard input
+      // we just register an update which will be executed after
+      // the contenteditable has processed the key.
+      window.setTimeout(function() {
+        self.updateSelection();
+      });
+    });
+  };
+
+  this.onMousedown = function(e) {
+    if (e.target.isContentEditable) {
+      this.__selecting = true;
+    }
+  };
+
+  this.onMouseup = function(e) {
+    if (!this.__selecting) {
+      return;
+    }
+    this.__selecting = false;
+    var self = this;
+
+    // NOTE: this is important to let the content-editable
+    // do the window selection update first
+    // strangely, it works almost without it, and is necessary only for one case
+    // when setting the cursor into an existing selection (??).
+    window.setTimeout(function() {
+      // Note: this method implements a try-catch guard triggering an error event
+      self.updateSelection(e);
+    });
+
+    e.stopPropagation();
   };
 
   // Updates the window selection whenever the model selection changes
@@ -266,31 +308,53 @@ BasicEditor.Prototype = function() {
 
   this.activate = function() {
     var el = this.el;
+
+    // enables selection handling
     this.editorCtrl.session.selection.on("selection:changed", this._onModelSelectionChanged);
+    el.addEventListener("mousedown", this._onMousedown, true);
+    window.document.addEventListener("mouseup", this._onMouseup, true);
+
+    // text input
     el.addEventListener("textInput", this._onTextInput, true);
     el.addEventListener("input", this._onTextInput, true);
+
+    // activates MutationObserver to handle deadkeys
     var _mutationObserverConfig = { subtree: true, characterData: true, characterDataOldValue: true };
     this._mutationObserver.observe(el, _mutationObserverConfig);
+
+    // activates keyboard bindings
     this.keyboard.connect(el);
+
     el.setAttribute("contenteditable", "true");
   };
 
   this.deactivate = function() {
     var el = this.el;
+
+    // disables selection handling
     this.editorCtrl.session.selection.off("selection:changed", this._onModelSelectionChanged);
+    el.removeEventListener("mousedown", this._onMousedown, true);
+    window.document.removeEventListener("mouseup", this._onMouseup, true);
+
+    // text input
     el.removeEventListener("textInput", this._onTextInput, true);
     el.removeEventListener("input", this._onTextInput, true);
+
+    // disables MutationObserver to handle deadkeys
     this._mutationObserver.disconnect();
+
+    // disable keyboard bindings
     this.keyboard.disconnect();
+
     el.setAttribute("contenteditable", "true");
   };
 
 };
 
-BasicEditor.Prototype.prototype = Surface.prototype;
-BasicEditor.prototype = new BasicEditor.Prototype();
+EditableSurface.Prototype.prototype = Surface.prototype;
+EditableSurface.prototype = new EditableSurface.Prototype();
 
-BasicEditor._getDefaultKeyMap = function() {
+EditableSurface._getDefaultKeyMap = function() {
   var keymap = require("./default_keymap_osx");
   if (global.navigator !== undefined) {
     var platform = global.navigator.platform;
@@ -305,4 +369,4 @@ BasicEditor._getDefaultKeyMap = function() {
   return keymap;
 };
 
-module.exports = BasicEditor;
+module.exports = EditableSurface;
