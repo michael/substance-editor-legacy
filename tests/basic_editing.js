@@ -27,8 +27,7 @@ BasicEditing.Prototype = function() {
   // Deactivate the default fixture for testing basic behavior
   this.setup = function() {
     var doc = new TestDocument({seed: require("./fixture")});
-    var nodeSurfaceProvider = new Container.DefaultNodeSurfaceProvider(doc);
-    var container = new Container(doc, "content", nodeSurfaceProvider);
+    var container = doc.get("content");
     var session = new DocumentSession(container);
     var editorFactory = new SimpleEditorFactory();
     var editor = new EditorController(session, editorFactory);

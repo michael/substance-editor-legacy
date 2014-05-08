@@ -53,7 +53,7 @@ EditorController.Prototype = function() {
     if (_write(this, session, text)) {
       session.save();
       selection.set(session.selection);
-      _afterEdit(this);
+      this._afterEdit();
     }
   };
 
@@ -75,7 +75,7 @@ EditorController.Prototype = function() {
     if (_deleteSelection(this, session)) {
       session.save();
       this.session.selection.set(sel);
-      _afterEdit(this);
+      this._afterEdit();
     }
   };
 
@@ -94,7 +94,7 @@ EditorController.Prototype = function() {
     if (_breakNode(this, session)) {
       session.save();
       selection.set(session.selection);
-      _afterEdit(this);
+      this._afterEdit();
     }
   };
 
@@ -136,7 +136,7 @@ EditorController.Prototype = function() {
 
     editor.indent(session, component, direction);
     session.save();
-    _afterEdit(this);
+    this._afterEdit();
   };
 
   // Copy the current selection
@@ -278,10 +278,7 @@ EditorController.Prototype = function() {
   // Create an annotation of given type for the current selection
   // --------
   //
-  // TODO: this seems a bit less general. Maybe it should go into the writer controller.
   this.annotate = function(type, data) {
-    console.log("EditorController.annotate()");
-
     var selection = this.session.selection;
     if (selection.isNull()) {
       throw new Error("Nothing selected.");
@@ -293,23 +290,11 @@ EditorController.Prototype = function() {
       // nothing to do
       return;
     }
-
     var session = this.session.startSimulation();
-
-    // TODO: how could this be generalized
-    if (type === "remark_reference" || type === "error_reference") {
-      data = data || {};
-      var issueId = _issue(this, session, type);
-      data.target = issueId;
-    }
-
-    _annotate(this, session, type, data);
-
+    this._annotate(session, type, data);
     session.save();
-
     this.session.selection.set(session.selection);
-
-    _afterEdit(this);
+    this._afterEdit();
   };
 
   this.toggleAnnotation = function(type, data) {
@@ -336,38 +321,17 @@ EditorController.Prototype = function() {
   this.deleteAnnotation = function(nodeId) {
     var doc = this.session.document;
     var annotation = doc.get(nodeId);
-
     var component = this.session.container.lookup(annotation.path);
 
     doc.delete(nodeId);
-
     // To allow easy toggling back we will set the selection
     // to the annotated range afterwards.
-
     this.session.selection.set({
       start: [component.pos, annotation.range[0]],
       end:   [component.pos, annotation.range[1]]
     });
 
-    _afterEdit(this);
-  };
-
-  // TODO: Hmmm.... I think this is not general editing, but rather special and should
-  // go into the writer controller.
-  this.addReference = function(type, data) {
-    var selection = this.session.selection;
-    if (selection.isNull()) {
-      console.error("Nothing is selected.");
-      return;
-    }
-
-    var session = this.session.startSimulation();
-
-    _annotate(this, session, type, data);
-
-    session.save();
-    selection.set(session.selection);
-    _afterEdit(this);
+    this._afterEdit();
   };
 
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
@@ -390,45 +354,6 @@ EditorController.Prototype = function() {
     return editor.canBreak(this.session, component, charPos);
   };
 
-  this.createCitation = function() {
-    var doc = this.session.document;
-    var node = doc.create({
-      id: "web_resource_"+util.uuid(),
-      type: "web_resource",
-      url: "http://"
-    });
-
-    this.document.show("citations", [node.id]);
-    return node.id;
-  };
-
-  // TODO: remove
-  // -------------
-
-  this.createFigure = function() {
-    var doc = this.session.document;
-
-    var caption = {
-      id: "text_"+util.uuid(),
-      type: "text",
-      content: "Enter caption"
-    };
-
-    doc.create(caption);
-
-    var figure = {
-      type: "figure",
-      id: "figure_"+util.uuid(),
-      image: "",
-      caption: caption.id
-    };
-
-    doc.create(figure);
-    doc.show("figures", figure.id);
-    return figure.id;
-  };
-
-
   // TODO: there is a canInsertNode+insertNode API provided by the ViewEditor which should be used here.
   this.insertNode = function(type, data) {
     var selection = this.session.selection;
@@ -449,7 +374,7 @@ EditorController.Prototype = function() {
     if (_insertNode(this, session, newNode)) {
       session.save();
       this.session.selection.set(session.selection);
-      _afterEdit(this);
+      this._afterEdit();
     }
   };
 
@@ -482,7 +407,7 @@ EditorController.Prototype = function() {
 
     this.session.selection.set(selection);
 
-    _afterEdit(this);
+    this._afterEdit();
   };
 
   this.select = function(mode) {
@@ -604,17 +529,18 @@ EditorController.Prototype = function() {
     if (viewEditor.ensureLastNode) viewEditor.ensureLastNode(session);
   };
 
-  // Private functions
+
+  // Private/Internal functions
   // ........
 
-  var _annotate = function(self, session, type, data) {
+  this._annotate = function(session, type, data) {
     var selRange = session.selection.range();
     var pos = selRange.start[0];
     var range = [selRange.start[1], selRange.end[1]];
 
     var node = session.container.getRootNodeFromPos(pos);
     var component = session.container.getComponent(pos);
-    var editor = _getEditor(self, node);
+    var editor = _getEditor(this, node);
 
     if (!editor.canAnnotate(session, component, type, range)) {
       console.log("Can not annotate component", component);
@@ -625,19 +551,13 @@ EditorController.Prototype = function() {
     session.selection.set(selRange);
   };
 
-  var _afterEdit = function(self) {
-    var doc = self.session.document;
-
+  this._afterEdit = function() {
+    var doc = this.session.document;
     // setting a 'master' reference to the current state
     if (doc.chronicle) {
       doc.chronicle.mark("master");
     }
-    self.trigger("document:edited");
-  };
-
-  // Expose to outside
-  this._afterEdit = function() {
-    _afterEdit(this);
+    this.trigger("document:edited");
   };
 
   var _getEditor = function(self, node) {
@@ -876,39 +796,6 @@ EditorController.Prototype = function() {
     return true;
   };
 
-
-
-  // TODO: this should be done via the node classes
-  var _issueType = {
-    "error_reference": "error",
-    "remark_reference": "remark"
-  };
-
-  var _issueContainer = {
-    "error": "errors",
-    "remark": "remarks"
-  };
-
-  var _issue = function(self, session, annoType) {
-    var type = _issueType[annoType];
-    var container = _issueContainer[type];
-
-    if (!type) {
-      throw new Error("Unsupported issue type:" + annoType);
-    }
-
-    var doc = session.document;
-    var issue = {
-      id: type+"_" + util.uuid(),
-      type: type,
-      created_at: new Date(),
-      // TODO: Use full username from operating system
-      creator: Math.random()>0.5 ? "Michael Aufreiter" : "Oliver Buchtala"
-    };
-    doc.create(issue);
-    doc.show(container, [issue.id]);
-    return issue.id;
-  };
 };
 
 
