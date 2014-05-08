@@ -9,7 +9,7 @@ var Document = require("substance-document");
 var DocumentSession = Document.Session;
 var Container = Document.Container;
 var EditorController = require("../src/editor_controller");
-var SimpleEditorFactory = require("../src/editors/simple_editor_factory");
+var SimpleEditorFactory = require("./editors/simple_editor_factory");
 var TestDocument = require("./test_document");
 
 // Test

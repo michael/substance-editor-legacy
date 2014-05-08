@@ -19,9 +19,6 @@ var EditingError = errors.define("EditingError");
 // By providing a custom factory for Node editors it is possible
 // to control what and how the content is editable.
 
-// TODO: there is an ugliness now with the Container. Container is rather coupled to a Renderer.
-// Selections occur in the view domain and thus depend on the rendering.
-
 var EditorController = function(documentSession, editorFactory) {
   this.session = documentSession;
   this.editorFactory = editorFactory;
@@ -240,7 +237,6 @@ EditorController.Prototype = function() {
       insertPos--;
     }
 
-
     // transfer nodes from content document
     // TODO: transfer annotations
     var nodeIds = content.get("content").nodes;
@@ -284,6 +280,8 @@ EditorController.Prototype = function() {
   //
   // TODO: this seems a bit less general. Maybe it should go into the writer controller.
   this.annotate = function(type, data) {
+    console.log("EditorController.annotate()");
+
     var selection = this.session.selection;
     if (selection.isNull()) {
       throw new Error("Nothing selected.");
@@ -314,7 +312,6 @@ EditorController.Prototype = function() {
     _afterEdit(this);
   };
 
-
   this.toggleAnnotation = function(type, data) {
     var annos = this.session.annotator.getAnnotations(this.session.selection);
     var anno = null;
@@ -335,8 +332,7 @@ EditorController.Prototype = function() {
 
   // This deactivates an annotation
   // ----
-  // To allow easy toggling back we will set the selection
-  // to the annotated range afterwards.
+  //
   this.deleteAnnotation = function(nodeId) {
     var doc = this.session.document;
     var annotation = doc.get(nodeId);
@@ -345,17 +341,14 @@ EditorController.Prototype = function() {
 
     doc.delete(nodeId);
 
+    // To allow easy toggling back we will set the selection
+    // to the annotated range afterwards.
+
     this.session.selection.set({
       start: [component.pos, annotation.range[0]],
       end:   [component.pos, annotation.range[1]]
     });
 
-    _afterEdit(this);
-  };
-
-  // TODO: from where is this called? seems a bit clumsy...
-  this.updateNode = function(nodeId, property, val) {
-    this.session.document.set([nodeId, property], val);
     _afterEdit(this);
   };
 
@@ -569,12 +562,6 @@ EditorController.Prototype = function() {
 
   this._insertNode = function(session, newNode) {
     return _insertNode(this, session, newNode);
-  };
-
-
-
-  this.createComment = function(comment) {
-    this.session.document.comment(comment);
   };
 
   // HACK: this should be created dynamically...

@@ -26,7 +26,10 @@ var EditableSurface = function(docCtrl, renderer, options) {
   this.__id__ = __id__++;
 
   options = options || {};
-  var keymap = options.keymap || EditableSurface._getDefaultKeyMap();
+  var keymap = options.keymap;
+  if (!keymap) {
+    console.error("WARNING: no keymap specified.");
+  }
   this.keyboard = new Keyboard(keymap);
   this.editorCtrl = docCtrl;
   this.el.spellcheck = false;
@@ -222,7 +225,7 @@ EditableSurface.Prototype = function() {
       self._domChanges = [];
     });
 
-    keyboard.bind("special", "keydown", function(e) {
+    keyboard.bind("special", "keydown", function(/*e*/) {
       // Note: this gets called twice: once for the deadkey and a second time
       // for the associated character
       if (!self._hasDeadKey) {
@@ -353,20 +356,5 @@ EditableSurface.Prototype = function() {
 
 EditableSurface.Prototype.prototype = Surface.prototype;
 EditableSurface.prototype = new EditableSurface.Prototype();
-
-EditableSurface._getDefaultKeyMap = function() {
-  var keymap = require("./default_keymap_osx");
-  if (global.navigator !== undefined) {
-    var platform = global.navigator.platform;
-    if (platform.toLowerCase().search("linux") >= 0) {
-      keymap = require("./default_keymap_unix");
-    }
-    else if (platform.toLowerCase().search("win32") >= 0) {
-      // currently we use the same keymap for linux and win
-      keymap = require("./default_keymap_unix");
-    }
-  }
-  return keymap;
-};
 
 module.exports = EditableSurface;
